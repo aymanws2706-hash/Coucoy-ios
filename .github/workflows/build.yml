@@ -29,10 +29,13 @@ jobs:
           cd coucou-src
           git remote add origin https://github.com/Louis-CFM/coucou.git
           git fetch -q --depth 1 origin "$COUCOU_SHA"
-          git checkout -q FETCH_HEAD -- NotchBuddy/Resources/sounds
+          git checkout -q FETCH_HEAD -- NotchBuddy/Resources/sounds NotchBuddy/Assets.xcassets/AppIcon.appiconset
           mkdir -p ../Resources/sounds
           cp NotchBuddy/Resources/sounds/*.wav ../Resources/sounds/
           ls ../Resources/sounds | wc -l
+          # Coucou's own app icon (1024 px), alpha flattened for iOS.
+          sips -s format jpeg NotchBuddy/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png --out /tmp/icon.jpg >/dev/null
+          sips -s format png /tmp/icon.jpg --out ../Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png >/dev/null
 
       - name: Generate Xcode project
         run: |

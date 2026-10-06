@@ -74,7 +74,7 @@ back.
 - `Sources/CoucouKit/` is Coucou's own shared engine, copied unchanged from
   commit `f4bfb49` (MIT, see `LICENSE-COUCOU-MIT`).
 - `Sources/App`, `Sources/Widget`, `Sources/Shared` are this app.
-- The sounds are downloaded from the Coucou repo at build time and are not
+- The sounds and the app icon are downloaded from the Coucou repo at build time and are not
   stored here. Mochi's name, look and sounds are © Louis Raillé
   (`LICENSE-ASSETS-COUCOU.md`); this build is for personal use.
 - `project.yml` is an [XcodeGen](https://github.com/yonaskolb/XcodeGen) spec;
