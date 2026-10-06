@@ -88,3 +88,81 @@ jobs:
             Install with Sideloadly or AltStore using your Apple ID — see README.
           files: Coucou.ipa
           make_latest: true
+
+  # Runs the app on a virtual iPhone and records what it looks like, so it can be
+  # checked from a phone without installing anything. Results: release "preview".
+  preview:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch Coucou sounds and icon
+        run: |
+          git init -q coucou-src && cd coucou-src
+          git remote add origin https://github.com/Louis-CFM/coucou.git
+          git fetch -q --depth 1 origin "$COUCOU_SHA"
+          git checkout -q FETCH_HEAD -- NotchBuddy/Resources/sounds NotchBuddy/Assets.xcassets/AppIcon.appiconset
+          mkdir -p ../Resources/sounds && cp NotchBuddy/Resources/sounds/*.wav ../Resources/sounds/
+          sips -s format jpeg NotchBuddy/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png --out /tmp/icon.jpg >/dev/null
+          sips -s format png /tmp/icon.jpg --out ../Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png >/dev/null
+
+      - name: Build for the simulator
+        run: |
+          brew install xcodegen
+          xcodegen generate
+          set -o pipefail
+          xcodebuild -project CoucouMochi.xcodeproj -scheme Coucou -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build \
+            | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+          test -d build/Build/Products/Debug-iphonesimulator/Coucou.app
+
+      - name: Run on a virtual iPhone and record
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json,sys,re
+          d=json.load(sys.stdin)["devices"]
+          c=[(rt,x) for rt,xs in d.items() if "iOS" in rt for x in xs if re.search(r"iPhone \d+ Pro$",x["name"])]
+          c.sort(key=lambda t:(t[0],t[1]["name"]))
+          print(c[-1][1]["udid"])')
+          echo "Device: $(xcrun simctl list devices | grep $UDID)"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryLevel 100 --cellularBars 4 || true
+          xcrun simctl install "$UDID" build/Build/Products/Debug-iphonesimulator/Coucou.app
+          mkdir -p preview
+          shot() { sleep "$2"; xcrun simctl io "$UDID" screenshot "preview/$1.png" >/dev/null; }
+          go() { xcrun simctl openurl "$UDID" "coucou://$1"; }
+          xcrun simctl io "$UDID" recordVideo --codec=h264 --force preview/coucou-demo.mp4 &
+          REC=$!
+          sleep 2
+          xcrun simctl launch "$UDID" com.aywsalex.coucou
+          shot 01-hello 3
+          go state/working;   shot 02-working 2.5
+          go state/thinking;  shot 03-thinking 2.5
+          go emote/love;      shot 04-love 1
+          go state/approval;  shot 05-approval 2
+          go outfit/crown;    shot 06-crown 2
+          go state/finished;  shot 07-finished 1.5
+          go state/dizzy;     shot 08-dizzy 1.2
+          go outfit/witchHat; go state/idle; sleep 2
+          go island/on;       sleep 2
+          go state/thinking;  sleep 1.5
+          xcrun simctl launch "$UDID" com.apple.Preferences
+          shot 09-dynamic-island 3
+          xcrun simctl ui "$UDID" appearance dark || true
+          xcrun simctl launch "$UDID" com.apple.mobileslideshow || true
+          shot 10-dynamic-island-photos 3
+          kill -INT $REC; wait $REC || true
+          ls -lh preview
+
+      - name: Publish preview
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: preview
+          name: Coucou preview (virtual iPhone)
+          body: |
+            Screenshots and a video of the latest build running on a virtual iPhone.
+            Open any file below on your phone to view it. Built from ${{ github.sha }}.
+          files: preview/*
+          make_latest: false
