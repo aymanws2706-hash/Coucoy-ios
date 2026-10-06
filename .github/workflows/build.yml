@@ -1,0 +1,87 @@
+name: Build Coucou.ipa
+
+# Builds the iPhone app on GitHub's free Mac runners, unsigned. Sideloadly or
+# AltStore sign it with your own Apple ID when you install it.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  # Coucou repo commit the sounds are taken from (they are not stored here).
+  COUCOU_SHA: f4bfb499d852d63e824853ec9c027b57e70bbc5a
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode
+        run: xcodebuild -version
+
+      - name: Fetch Coucou sounds
+        run: |
+          git init -q coucou-src
+          cd coucou-src
+          git remote add origin https://github.com/Louis-CFM/coucou.git
+          git fetch -q --depth 1 origin "$COUCOU_SHA"
+          git checkout -q FETCH_HEAD -- NotchBuddy/Resources/sounds
+          mkdir -p ../Resources/sounds
+          cp NotchBuddy/Resources/sounds/*.wav ../Resources/sounds/
+          ls ../Resources/sounds | wc -l
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build (unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project CoucouMochi.xcodeproj \
+            -scheme Coucou \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build | tee xcodebuild.log | grep -E "error:|warning: .*(BotEngine|Mochi)|BUILD (SUCCEEDED|FAILED)" || true
+          test -d build/Build/Products/Release-iphoneos/Coucou.app
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: xcodebuild.log
+          if-no-files-found: ignore
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/Coucou.app Payload/
+          ls Payload/Coucou.app/PlugIns || true
+          zip -qry Coucou.ipa Payload
+          ls -lh Coucou.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Coucou-ipa
+          path: Coucou.ipa
+
+      - name: Publish as the "latest" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Coucou for iPhone (latest build)
+          body: |
+            Unsigned build from ${{ github.sha }}.
+            Install with Sideloadly or AltStore using your Apple ID — see README.
+          files: Coucou.ipa
+          make_latest: true

@@ -1,0 +1,8 @@
+*.xcodeproj/
+build/
+Payload/
+*.ipa
+Resources/sounds/
+Resources/*-Info.plist
+coucou-src/
+.DS_Store
