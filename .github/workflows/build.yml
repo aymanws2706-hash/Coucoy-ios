@@ -131,30 +131,37 @@ jobs:
           xcrun simctl status_bar "$UDID" override --time 9:41 --batteryLevel 100 --cellularBars 4 || true
           xcrun simctl install "$UDID" build/Build/Products/Debug-iphonesimulator/Coucou.app
           mkdir -p preview
-          shot() { sleep "$2"; xcrun simctl io "$UDID" screenshot "preview/$1.png" >/dev/null; }
-          go() { xcrun simctl openurl "$UDID" "coucou://$1"; }
           xcrun simctl io "$UDID" recordVideo --codec=h264 --force preview/coucou-demo.mp4 &
           REC=$!
           sleep 2
-          xcrun simctl launch "$UDID" com.aywsalex.coucou
-          shot 01-hello 3
-          go state/working;   shot 02-working 2.5
-          go state/thinking;  shot 03-thinking 2.5
-          go emote/love;      shot 04-love 1
-          go state/approval;  shot 05-approval 2
-          go outfit/crown;    shot 06-crown 2
-          go state/finished;  shot 07-finished 1.5
-          go state/dizzy;     shot 08-dizzy 1.2
-          go outfit/witchHat; go state/idle; sleep 2
-          go island/on;       sleep 2
-          go state/thinking;  sleep 1.5
+          xcrun simctl launch "$UDID" com.aywsalex.coucou -demo
+          # Times match runDemo() in CoucouApp.swift (seconds after launch).
+          T0=$(python3 -c 'import time;print(time.time())')
+          at() { python3 -c "import time,sys;d=$T0+float(sys.argv[1])-time.time();time.sleep(max(0,d))" "$1"; }
+          shot() { at "$2"; xcrun simctl io "$UDID" screenshot "preview/$1.png" >/dev/null; }
+          shot 01-hello 2.3
+          shot 02-working 4.3
+          shot 03-thinking 7.0
+          shot 04-love 8.7
+          shot 05-approval 10.3
+          shot 06-crown 12.5
+          shot 07-finished 13.9
+          shot 08-dizzy 15.3
+          shot 09-island-on 19.2
+          at 21
           xcrun simctl launch "$UDID" com.apple.Preferences
-          shot 09-dynamic-island 3
-          xcrun simctl ui "$UDID" appearance dark || true
-          xcrun simctl launch "$UDID" com.apple.mobileslideshow || true
-          shot 10-dynamic-island-photos 3
+          shot 10-dynamic-island 24
           kill -INT $REC; wait $REC || true
+          # Phone-friendly size.
+          avconvert --source preview/coucou-demo.mp4 --preset Preset960x540 \
+            --output preview/coucou-demo-small.mp4 --replace >/dev/null 2>&1 \
+            && mv preview/coucou-demo-small.mp4 preview/coucou-demo.mp4 || true
           ls -lh preview
+
+      - name: Clear the previous preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete preview --yes --cleanup-tag -R "$GITHUB_REPOSITORY" || true
 
       - name: Publish preview
         uses: softprops/action-gh-release@v2
