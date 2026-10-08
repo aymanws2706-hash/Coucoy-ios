@@ -91,37 +91,74 @@ struct MochiHomeWidget: Widget {
 
 // MARK: - Dynamic Island + lock screen Live Activity
 
+/// The task line under Putshi: title, current step and a progress bar.
+struct TaskLine: View {
+    let state: MochiActivityAttributes.ContentState
+    let tint: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(state.taskTitle)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+            Text(state.taskStep)
+                .font(.caption)
+                .foregroundStyle(tint)
+                .lineLimit(1)
+            ProgressView(value: Double(state.taskDone), total: Double(max(state.taskTotal, 1)))
+                .tint(tint)
+            Text("\(state.taskDone) of \(state.taskTotal) steps")
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.6))
+                .monospacedDigit()
+        }
+    }
+}
+
 struct MochiLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: MochiActivityAttributes.self) { context in
             let s = BotState(rawValue: context.state.state) ?? .idle
             let o = Outfit(rawValue: context.state.outfit) ?? .none
+            let hasTask = !context.state.taskTitle.isEmpty
             // Lock screen banner
             HStack(spacing: 14) {
                 MochiPose(state: s, outfit: o, headroom: 0.35)
                     .frame(width: 64, height: 80)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Putshi · \(s.title)").font(.headline).foregroundStyle(.white)
-                    Text(s.caption).font(.subheadline).foregroundStyle(s.tint)
+                if hasTask {
+                    TaskLine(state: context.state, tint: s.tint)
+                } else {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Putshi · \(s.title)").font(.headline).foregroundStyle(.white)
+                        Text(s.caption).font(.subheadline).foregroundStyle(s.tint)
+                    }
                 }
-                Spacer()
+                Spacer(minLength: 0)
             }
             .padding(14)
             .activityBackgroundTint(Color(hex: "#0B0D12"))
             .activitySystemActionForegroundColor(.white)
-            .widgetURL(URL(string: "putshi://greet"))
+            .widgetURL(URL(string: "putshi://open"))
         } dynamicIsland: { context in
             let s = BotState(rawValue: context.state.state) ?? .idle
             let o = Outfit(rawValue: context.state.outfit) ?? .none
+            let hasTask = !context.state.taskTitle.isEmpty
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     MochiPose(state: s, outfit: o, headroom: 0.35)
                         .frame(width: 60, height: 76)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Putshi").font(.headline)
-                        Text(s.caption).font(.subheadline).foregroundStyle(s.tint)
+                    Group {
+                        if hasTask {
+                            TaskLine(state: context.state, tint: s.tint)
+                        } else {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Putshi").font(.headline)
+                                Text(s.caption).font(.subheadline).foregroundStyle(s.tint)
+                            }
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -135,14 +172,21 @@ struct MochiLiveActivity: Widget {
                 MochiPose(state: s, outfit: .none, showBadge: false)
                     .frame(width: 26, height: 26)
             } compactTrailing: {
-                Circle()
-                    .fill(s.tint)
-                    .frame(width: 10, height: 10)
+                if hasTask {
+                    Text("\(context.state.taskDone)/\(context.state.taskTotal)")
+                        .font(.caption2.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(s.tint)
+                } else {
+                    Circle()
+                        .fill(s.tint)
+                        .frame(width: 10, height: 10)
+                }
             } minimal: {
                 MochiPose(state: s, outfit: .none, showBadge: false)
                     .frame(width: 22, height: 22)
             }
-            .widgetURL(URL(string: "putshi://greet"))
+            .widgetURL(URL(string: "putshi://open"))
             .keylineTint(s.tint)
         }
     }

@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ContentView: View {
+struct PlaygroundView: View {
     @ObservedObject var model: MochiModel
 
     private let emotes: [(BotEmote?, String)] = [

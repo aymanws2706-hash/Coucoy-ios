@@ -47,6 +47,8 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSSupportsLiveActivities: true
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
         CFBundleURLTypes:
           - CFBundleURLName: com.aymanws.putshi
             CFBundleURLSchemes:

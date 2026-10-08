@@ -13,6 +13,21 @@ real iPhone app:
 - **Shortcuts**: links like `putshi://state/thinking` change Mochi from the
   Shortcuts app or from JARVIS.
 
+## Putshi the assistant
+
+- **Chat tab**: talk to Putshi. It thinks with Claude (`claude-opus-5-5`),
+  replies in your language, and pushes back with options when a plan is shaky.
+- **Tasks**: for multi-step jobs Putshi makes a task with steps. You follow it
+  live in the **Tasks** tab, on the **lock screen** and in the **Dynamic Island**.
+- **Your PC**: anything that needs the computer goes to the Putshi bridge on
+  your PC (`bridge/`). Writing files, running commands and opening apps wait
+  for your **Allow / Deny** on the phone.
+- **Settings**: your Anthropic API key (kept in the Keychain), your PC's address
+  and bridge token.
+- **Shortcuts / Siri**: `putshi://ask?q=your request` sends a message.
+
+PC setup: see [bridge/README.md](bridge/README.md).
+
 No Mac and no paid Apple account needed. GitHub builds it, you install it from
 Windows with your free Apple ID.
 
@@ -68,6 +83,7 @@ back.
 | `putshi://emote/love` | love, surprised, proud, wink, yawn, happy, annoyed |
 | `putshi://outfit/witchHat` | auto, none, partyHat, beanie, crown, sunglasses, roundGlasses, bow, scarf, witchHat, pumpkin, santaHat, bunnyEars |
 | `putshi://island/on` · `putshi://island/off` | Dynamic Island on or off |
+| `putshi://ask?q=...` | sends a message to Putshi |
 
 ## How it's built
 

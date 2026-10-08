@@ -10,6 +10,17 @@ final class LiveIsland {
 
     var isRunning: Bool { !Activity<MochiActivityAttributes>.activities.isEmpty }
 
+    /// The task Putshi is working on, shown under the character. nil = none.
+    struct TaskInfo { var title: String; var step: String; var done: Int; var total: Int }
+    var task: TaskInfo?
+
+    private func contentState(_ state: BotState, _ outfit: Outfit) -> MochiActivityAttributes.ContentState {
+        MochiActivityAttributes.ContentState(
+            state: state.rawValue, outfit: outfit.rawValue,
+            taskTitle: task?.title ?? "", taskStep: task?.step ?? "",
+            taskDone: task?.done ?? 0, taskTotal: task?.total ?? 0)
+    }
+
     /// Returns an error message to show, or nil on success.
     @discardableResult
     func start(state: BotState, outfit: Outfit) -> String? {
@@ -21,7 +32,7 @@ final class LiveIsland {
             return nil
         }
         let content = ActivityContent(
-            state: MochiActivityAttributes.ContentState(state: state.rawValue, outfit: outfit.rawValue),
+            state: contentState(state, outfit),
             staleDate: nil)
         do {
             _ = try Activity.request(
@@ -36,7 +47,7 @@ final class LiveIsland {
 
     func update(state: BotState, outfit: Outfit) {
         let content = ActivityContent(
-            state: MochiActivityAttributes.ContentState(state: state.rawValue, outfit: outfit.rawValue),
+            state: contentState(state, outfit),
             staleDate: nil)
         for activity in Activity<MochiActivityAttributes>.activities {
             Task { await activity.update(content) }

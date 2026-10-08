@@ -13,6 +13,10 @@ struct MochiActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var state: String      // BotState raw value
         var outfit: String     // Outfit raw value
+        var taskTitle: String = ""   // empty when Putshi has no task
+        var taskStep: String = ""
+        var taskDone: Int = 0
+        var taskTotal: Int = 0
     }
     var name: String
 }

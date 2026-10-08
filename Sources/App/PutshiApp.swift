@@ -2,13 +2,20 @@ import SwiftUI
 
 @main
 struct PutshiApp: App {
-    @StateObject private var model = MochiModel()
+    @StateObject private var model: MochiModel
+    @StateObject private var agent: PutshiAgent
     @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        let m = MochiModel()
+        _model = StateObject(wrappedValue: m)
+        _agent = StateObject(wrappedValue: PutshiAgent(mochi: m))
+    }
 
     var body: some Scene {
         WindowGroup {
-            ContentView(model: model)
-                .onOpenURL { model.handle(url: $0) }
+            RootView(model: model, agent: agent)
+                .onOpenURL(perform: open)
                 .task {
                     try? await Task.sleep(for: .milliseconds(500))
                     model.greet()
@@ -17,6 +24,18 @@ struct PutshiApp: App {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { model.refreshIsland() }
+        }
+    }
+
+    /// putshi://ask?q=… sends a message to Putshi (handy from Shortcuts or Siri);
+    /// everything else (state, emote, outfit, island) drives the character.
+    private func open(_ url: URL) {
+        if url.host == "ask",
+           let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+               .queryItems?.first(where: { $0.name == "q" })?.value {
+            agent.send(q)
+        } else {
+            model.handle(url: url)
         }
     }
 
@@ -34,7 +53,7 @@ struct PutshiApp: App {
             (14.5, { model.setState(.dizzy) }),
             (16.0, { model.setOutfit(.auto); model.setState(.idle) }),
             (18.0, { model.setIsland(true) }),
-            (19.5, { model.setState(.thinking) }),
+            (19.5, { agent.startDemoTask() }),
         ]
         var elapsed = 0.5
         for (at, action) in steps {
