@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct CoucouApp: App {
+struct PutshiApp: App {
     @StateObject private var model = MochiModel()
     @Environment(\.scenePhase) private var scenePhase
 

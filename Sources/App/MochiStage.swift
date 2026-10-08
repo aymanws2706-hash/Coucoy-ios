@@ -23,7 +23,7 @@ struct MochiStage: View {
             .gesture(touch(in: geo.size))
         }
         .aspectRatio(1 / (1 + headroom), contentMode: .fit)
-        .accessibilityLabel("Mochi, \(model.state.title)")
+        .accessibilityLabel("Putshi, \(model.state.title)")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { model.poke() }
     }

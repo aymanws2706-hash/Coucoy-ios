@@ -94,10 +94,10 @@ final class MochiModel: ObservableObject {
         }
     }
 
-    /// coucou://state/thinking · coucou://emote/love · coucou://outfit/crown
-    /// coucou://island/on · coucou://island/off — usable from the Shortcuts app.
+    /// putshi://state/thinking · putshi://emote/love · putshi://outfit/crown
+    /// putshi://island/on · putshi://island/off — usable from the Shortcuts app.
     func handle(url: URL) {
-        guard url.scheme == "coucou", let kind = url.host else { return }
+        guard url.scheme == "putshi", let kind = url.host else { return }
         let value = url.pathComponents.dropFirst().first ?? ""
         switch kind {
         case "state": if let s = BotState(rawValue: value) { setState(s) }

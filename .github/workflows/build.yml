@@ -1,4 +1,4 @@
-name: Build Coucou.ipa
+name: Build Putshi.ipa
 
 # Builds the iPhone app on GitHub's free Mac runners, unsigned. Sideloadly or
 # AltStore sign it with your own Apple ID when you install it.
@@ -46,15 +46,15 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild \
-            -project CoucouMochi.xcodeproj \
-            -scheme Coucou \
+            -project Putshi.xcodeproj \
+            -scheme Putshi \
             -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             build | tee xcodebuild.log | grep -E "error:|warning: .*(BotEngine|Mochi)|BUILD (SUCCEEDED|FAILED)" || true
-          test -d build/Build/Products/Release-iphoneos/Coucou.app
+          test -d build/Build/Products/Release-iphoneos/Putshi.app
 
       - name: Upload build log
         if: always()
@@ -67,26 +67,26 @@ jobs:
       - name: Package IPA
         run: |
           mkdir -p Payload
-          cp -R build/Build/Products/Release-iphoneos/Coucou.app Payload/
-          ls Payload/Coucou.app/PlugIns || true
-          zip -qry Coucou.ipa Payload
-          ls -lh Coucou.ipa
+          cp -R build/Build/Products/Release-iphoneos/Putshi.app Payload/
+          ls Payload/Putshi.app/PlugIns || true
+          zip -qry Putshi.ipa Payload
+          ls -lh Putshi.ipa
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Coucou-ipa
-          path: Coucou.ipa
+          name: Putshi-ipa
+          path: Putshi.ipa
 
       - name: Publish as the "latest" release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: Coucou for iPhone (latest build)
+          name: Putshi for iPhone (latest build)
           body: |
             Unsigned build from ${{ github.sha }}.
             Install with Sideloadly or AltStore using your Apple ID — see README.
-          files: Coucou.ipa
+          files: Putshi.ipa
           make_latest: true
 
   # Runs the app on a virtual iPhone and records what it looks like, so it can be
@@ -111,11 +111,11 @@ jobs:
           brew install xcodegen
           xcodegen generate
           set -o pipefail
-          xcodebuild -project CoucouMochi.xcodeproj -scheme Coucou -configuration Debug \
+          xcodebuild -project Putshi.xcodeproj -scheme Putshi -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build CODE_SIGNING_ALLOWED=NO build \
             | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
-          test -d build/Build/Products/Debug-iphonesimulator/Coucou.app
+          test -d build/Build/Products/Debug-iphonesimulator/Putshi.app
 
       - name: Run on a virtual iPhone and record
         run: |
@@ -129,13 +129,13 @@ jobs:
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
           xcrun simctl status_bar "$UDID" override --time 9:41 --batteryLevel 100 --cellularBars 4 || true
-          xcrun simctl install "$UDID" build/Build/Products/Debug-iphonesimulator/Coucou.app
+          xcrun simctl install "$UDID" build/Build/Products/Debug-iphonesimulator/Putshi.app
           mkdir -p preview
-          xcrun simctl io "$UDID" recordVideo --codec=h264 --force preview/coucou-demo.mp4 &
+          xcrun simctl io "$UDID" recordVideo --codec=h264 --force preview/putshi-demo.mp4 &
           REC=$!
           sleep 2
-          xcrun simctl launch "$UDID" com.aywsalex.coucou -demo
-          # Times match runDemo() in CoucouApp.swift (seconds after launch).
+          xcrun simctl launch "$UDID" com.aymanws.putshi -demo
+          # Times match runDemo() in PutshiApp.swift (seconds after launch).
           T0=$(python3 -c 'import time;print(time.time())')
           at() { python3 -c "import time,sys;d=$T0+float(sys.argv[1])-time.time();time.sleep(max(0,d))" "$1"; }
           shot() { at "$2"; xcrun simctl io "$UDID" screenshot "preview/$1.png" >/dev/null; }
@@ -153,9 +153,9 @@ jobs:
           shot 10-dynamic-island 24
           kill -INT $REC; wait $REC || true
           # Phone-friendly size.
-          avconvert --source preview/coucou-demo.mp4 --preset Preset960x540 \
-            --output preview/coucou-demo-small.mp4 --replace >/dev/null 2>&1 \
-            && mv preview/coucou-demo-small.mp4 preview/coucou-demo.mp4 || true
+          avconvert --source preview/putshi-demo.mp4 --preset Preset960x540 \
+            --output preview/putshi-demo-small.mp4 --replace >/dev/null 2>&1 \
+            && mv preview/putshi-demo-small.mp4 preview/putshi-demo.mp4 || true
           ls -lh preview
 
       - name: Clear the previous preview
@@ -167,7 +167,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: preview
-          name: Coucou preview (virtual iPhone)
+          name: Putshi preview (virtual iPhone)
           body: |
             Screenshots and a video of the latest build running on a virtual iPhone.
             Open any file below on your phone to view it. Built from ${{ github.sha }}.

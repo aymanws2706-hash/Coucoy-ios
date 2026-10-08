@@ -54,7 +54,7 @@ struct ContentView: View {
                     }
                 }
 
-                Text("Mochi is the mascot of Coucou by Louis Raillé (github.com/Louis-CFM/coucou). Engine MIT; character and sounds © Louis Raillé, used here for personal use.")
+                Text("Putshi is built on Coucou by Louis Raillé (github.com/Louis-CFM/coucou). Engine MIT; character and sounds © Louis Raillé, used here for personal use.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .padding(.top, 8)
@@ -68,7 +68,7 @@ struct ContentView: View {
 
     private var header: some View {
         HStack {
-            Text("Coucou").font(.system(size: 28, weight: .bold, design: .rounded))
+            Text("Putshi").font(.system(size: 28, weight: .bold, design: .rounded))
             Spacer()
             Button {
                 model.soundOn.toggle()
@@ -86,8 +86,8 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 8) {
             Toggle(isOn: Binding(get: { model.islandOn }, set: { model.setIsland($0) })) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Mochi in the Dynamic Island").font(.body.weight(.semibold))
-                    Text("Also shows on the lock screen. iOS removes it after about 8 hours; opening Coucou brings it back.")
+                    Text("Putshi in the Dynamic Island").font(.body.weight(.semibold))
+                    Text("Also shows on the lock screen. iOS removes it after about 8 hours; opening Putshi brings it back.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

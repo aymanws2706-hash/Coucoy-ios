@@ -3,7 +3,7 @@ import SwiftUI
 import ActivityKit
 
 @main
-struct CoucouWidgetBundle: WidgetBundle {
+struct PutshiWidgetBundle: WidgetBundle {
     var body: some Widget {
         MochiHomeWidget()
         MochiLiveActivity()
@@ -60,7 +60,7 @@ struct MochiWidgetView: View {
             HStack(spacing: 6) {
                 MochiPose(state: entry.state, outfit: .none, showBadge: false)
                 VStack(alignment: .leading) {
-                    Text("Mochi").font(.headline)
+                    Text("Putshi").font(.headline)
                     Text(entry.state.caption).font(.caption)
                 }
             }
@@ -81,10 +81,10 @@ struct MochiHomeWidget: Widget {
         StaticConfiguration(kind: "MochiHome", provider: MochiProvider()) { entry in
             MochiWidgetView(entry: entry)
                 .containerBackground(for: .widget) { Color(hex: "#0B0D12") }
-                .widgetURL(URL(string: "coucou://greet"))
+                .widgetURL(URL(string: "putshi://greet"))
         }
-        .configurationDisplayName("Mochi")
-        .description("Mochi on your home screen. Sleeps at night, dresses up for the season.")
+        .configurationDisplayName("Putshi")
+        .description("Putshi on your home screen. Sleeps at night, dresses up for the season.")
         .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryRectangular])
     }
 }
@@ -101,7 +101,7 @@ struct MochiLiveActivity: Widget {
                 MochiPose(state: s, outfit: o, headroom: 0.35)
                     .frame(width: 64, height: 80)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Mochi · \(s.title)").font(.headline).foregroundStyle(.white)
+                    Text("Putshi · \(s.title)").font(.headline).foregroundStyle(.white)
                     Text(s.caption).font(.subheadline).foregroundStyle(s.tint)
                 }
                 Spacer()
@@ -109,7 +109,7 @@ struct MochiLiveActivity: Widget {
             .padding(14)
             .activityBackgroundTint(Color(hex: "#0B0D12"))
             .activitySystemActionForegroundColor(.white)
-            .widgetURL(URL(string: "coucou://greet"))
+            .widgetURL(URL(string: "putshi://greet"))
         } dynamicIsland: { context in
             let s = BotState(rawValue: context.state.state) ?? .idle
             let o = Outfit(rawValue: context.state.outfit) ?? .none
@@ -120,7 +120,7 @@ struct MochiLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.center) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Mochi").font(.headline)
+                        Text("Putshi").font(.headline)
                         Text(s.caption).font(.subheadline).foregroundStyle(s.tint)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -142,7 +142,7 @@ struct MochiLiveActivity: Widget {
                 MochiPose(state: s, outfit: .none, showBadge: false)
                     .frame(width: 22, height: 22)
             }
-            .widgetURL(URL(string: "coucou://greet"))
+            .widgetURL(URL(string: "putshi://greet"))
             .keylineTint(s.tint)
         }
     }

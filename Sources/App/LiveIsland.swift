@@ -14,7 +14,7 @@ final class LiveIsland {
     @discardableResult
     func start(state: BotState, outfit: Outfit) -> String? {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            return "Live Activities are turned off. Open Settings › Coucou and turn on Live Activities."
+            return "Live Activities are turned off. Open Settings › Putshi and turn on Live Activities."
         }
         if isRunning {
             update(state: state, outfit: outfit)
@@ -25,7 +25,7 @@ final class LiveIsland {
             staleDate: nil)
         do {
             _ = try Activity.request(
-                attributes: MochiActivityAttributes(name: "Mochi"),
+                attributes: MochiActivityAttributes(name: "Putshi"),
                 content: content,
                 pushType: nil)
             return nil
