@@ -7,3 +7,5 @@ Resources/*-Info.plist
 coucou-src/
 .DS_Store
 Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png
+__pycache__/
+*.pyc

@@ -152,6 +152,13 @@ jobs:
           xcrun simctl launch "$UDID" com.apple.Preferences
           shot 10-dynamic-island 24
           kill -INT $REC; wait $REC || true
+          # Diagnostics: the app's own log lines and any crash report.
+          xcrun simctl spawn "$UDID" log show --last 3m --style compact \
+            --predicate 'process == "Putshi" OR subsystem CONTAINS "putshi"' > preview/app-log.txt 2>&1 || true
+          tail -c 200000 preview/app-log.txt > preview/app-log-tail.txt || true
+          mv preview/app-log-tail.txt preview/app-log.txt || true
+          ls ~/Library/Logs/DiagnosticReports/ 2>/dev/null | grep -i putshi | head -3 | while read f; do
+            cp ~/Library/Logs/DiagnosticReports/"$f" "preview/crash-$f.txt"; done || true
           # Phone-friendly size.
           avconvert --source preview/putshi-demo.mp4 --preset Preset960x540 \
             --output preview/putshi-demo-small.mp4 --replace >/dev/null 2>&1 \
