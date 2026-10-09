@@ -1,0 +1,88 @@
+name: Build Coucou for Windows
+
+# Builds the original Coucou desktop app (github.com/Louis-CFM/coucou, MIT) for
+# Windows on GitHub's free Windows runners and publishes it as the
+# "coucou-windows" release: an MSI, a setup.exe, and a portable zip.
+# Unsigned, so Windows SmartScreen warns on first run (More info > Run anyway).
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/coucou-windows.yml"]
+
+permissions:
+  contents: write
+
+env:
+  COUCOU_SHA: f4bfb499d852d63e824853ec9c027b57e70bbc5a
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Get Coucou at the pinned commit
+        shell: pwsh
+        run: |
+          git init -q coucou
+          cd coucou
+          git remote add origin https://github.com/Louis-CFM/coucou.git
+          git fetch -q --depth 1 origin $env:COUCOU_SHA
+          git checkout -q FETCH_HEAD
+          git log -1 --format="%h %s"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            coucou/windows/target
+          key: coucou-win-cargo-${{ env.COUCOU_SHA }}
+          restore-keys: coucou-win-cargo-
+
+      - name: Install dependencies
+        working-directory: coucou/windows
+        run: npm ci
+
+      - name: Build the installers
+        working-directory: coucou/windows
+        shell: pwsh
+        run: |
+          npm run pack
+          Get-ChildItem release | Format-Table Name, Length
+
+      - name: Collect the files
+        id: files
+        shell: pwsh
+        run: |
+          $v = (Get-Content coucou/windows/src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          New-Item -ItemType Directory out | Out-Null
+          Copy-Item "coucou/windows/release/Coucou-Windows-$v.msi" out/Coucou-Windows.msi
+          Copy-Item "coucou/windows/release/Coucou-Windows-$v-setup.exe" out/Coucou-Windows-setup.exe
+          New-Item -ItemType Directory portable | Out-Null
+          Copy-Item coucou/windows/target/release/coucou.exe, coucou/windows/target/release/coucou-hook.exe portable/
+          Compress-Archive -Path portable/* -DestinationPath out/Coucou-Windows-portable.zip
+          Get-ChildItem out | Format-Table Name, Length
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Publish the coucou-windows release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: coucou-windows
+          name: Coucou for Windows ${{ steps.files.outputs.version }} (personal build)
+          body: |
+            The original Coucou desktop app by Louis Raillé (MIT), built from commit ${{ env.COUCOU_SHA }}.
+
+            Pick one:
+            - **Coucou-Windows.msi**: Windows Installer, recommended.
+            - **Coucou-Windows-setup.exe**: the other installer.
+            - **Coucou-Windows-portable.zip**: no install; unzip and run coucou.exe.
+
+            It isn't code-signed, so Windows shows "Windows protected your PC": click **More info › Run anyway**.
+            Microsoft Defender sometimes flags the unsigned setup.exe by mistake; the MSI or the portable zip avoid that.
+          files: out/*
+          make_latest: false
