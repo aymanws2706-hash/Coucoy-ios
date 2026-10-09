@@ -30,6 +30,19 @@ jobs:
           git checkout -q FETCH_HEAD
           git log -1 --format="%h %s"
 
+      # Personal fix: re-center the settings window every time it opens, so it
+      # can't stay off-screen after a display or scaling change.
+      - name: Patch settings window placement
+        shell: pwsh
+        run: |
+          $f = "coucou/windows/src-tauri/src/lib.rs"
+          $src = Get-Content $f -Raw
+          $old = "    let _ = win.unminimize();`n    let _ = win.show();"
+          if (-not $src.Contains($old)) { throw "settings window code changed upstream; patch not applied" }
+          $new = "    let _ = win.unminimize();`n    let _ = win.center();`n    let _ = win.show();"
+          Set-Content -Path $f -Value $src.Replace($old, $new) -NoNewline
+          Select-String -Path $f -Pattern "win.center" | Select-Object -First 2
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -73,7 +86,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: coucou-windows
-          name: Coucou for Windows ${{ steps.files.outputs.version }} (personal build)
+          name: Coucou for Windows ${{ steps.files.outputs.version }} (personal build, settings re-centers)
           body: |
             The original Coucou desktop app by Louis Raillé (MIT), built from commit ${{ env.COUCOU_SHA }}.
 
