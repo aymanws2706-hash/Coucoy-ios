@@ -39,7 +39,7 @@ jobs:
           $src = Get-Content $f -Raw
           $pattern = '(let _ = win\.unminimize\(\);)(\r?\n)(\s*)(let _ = win\.show\(\);)'
           if ($src -notmatch $pattern) { throw "settings window code changed upstream; patch not applied" }
-          $patched = [regex]::Replace($src, $pattern, '$1$2$3let _ = win.center();$2$3$4', 1)
+          $patched = ([regex]$pattern).Replace($src, '$1$2$3let _ = win.center();$2$3$4', 1)
           Set-Content -Path $f -Value $patched -NoNewline
           Select-String -Path $f -Pattern "win.center" | Select-Object -First 2
 
