@@ -24,6 +24,11 @@ real iPhone app:
   for your **Allow / Deny** on the phone.
 - **Settings**: your Anthropic API key (kept in the Keychain), your PC's address
   and bridge token.
+- **Memory**: tell Putshi something lasting ("remember I use Revit 2025") and it
+  keeps it for every future chat. See and delete it in **Settings › Memory**.
+- **Tasks widget**: add **Putshi tasks** to your home screen (small, medium or
+  large) to see the current task and its steps. It needs the App Group, which
+  AltStore sets up; if your install can't share data, the widget says so.
 - **Shortcuts / Siri**: `putshi://ask?q=your request` sends a message.
 
 PC setup: see [bridge/README.md](bridge/README.md).

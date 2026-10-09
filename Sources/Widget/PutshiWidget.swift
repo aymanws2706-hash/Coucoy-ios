@@ -6,6 +6,7 @@ import ActivityKit
 struct PutshiWidgetBundle: WidgetBundle {
     var body: some Widget {
         MochiHomeWidget()
+        TasksWidget()
         MochiLiveActivity()
     }
 }
@@ -86,6 +87,187 @@ struct MochiHomeWidget: Widget {
         .configurationDisplayName("Putshi")
         .description("Putshi on your home screen. Sleeps at night, dresses up for the season.")
         .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryRectangular])
+    }
+}
+
+// MARK: - Home screen tasks widget
+
+struct TasksEntry: TimelineEntry {
+    let date: Date
+    let tasks: [SharedStore.TaskSnap]
+    let shared: Bool        // false: no App Group on this install
+}
+
+struct TasksProvider: TimelineProvider {
+    func placeholder(in context: Context) -> TasksEntry {
+        TasksEntry(date: Date(), tasks: [Self.sample], shared: true)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (TasksEntry) -> Void) {
+        let tasks = SharedStore.loadTasks()
+        completion(TasksEntry(date: Date(), tasks: context.isPreview && tasks.isEmpty ? [Self.sample] : tasks,
+                              shared: SharedStore.group != nil || context.isPreview))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<TasksEntry>) -> Void) {
+        let entry = TasksEntry(date: Date(), tasks: SharedStore.loadTasks(), shared: SharedStore.group != nil)
+        // The app reloads this widget whenever a task changes; this is only a fallback.
+        completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(30 * 60))))
+    }
+
+    /// Shown in the widget gallery only.
+    static let sample = SharedStore.TaskSnap(
+        id: "t1", title: "Export Revit plans", status: "running",
+        steps: [.init(text: "Open the project on PC", status: "done"),
+                .init(text: "Export sheets to PDF", status: "running"),
+                .init(text: "Send the PDFs to phone", status: "pending")],
+        summary: "", created: Date(), updated: Date())
+}
+
+private func stepColor(_ status: String) -> Color {
+    switch status {
+    case "done": Color(hex: "#34D399")
+    case "running": Color(hex: "#3B9EFF")
+    case "failed": Color(hex: "#F4505E")
+    default: Color.white.opacity(0.35)
+    }
+}
+
+private func stepIcon(_ status: String) -> String {
+    switch status {
+    case "done": "checkmark.circle.fill"
+    case "running": "circle.dotted.circle"
+    case "failed": "xmark.circle.fill"
+    default: "circle"
+    }
+}
+
+struct TaskBlock: View {
+    let task: SharedStore.TaskSnap
+    let maxSteps: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 6) {
+                Text(task.title).font(.subheadline.weight(.semibold)).lineLimit(1)
+                Spacer(minLength: 4)
+                Text(task.status == "running" ? "\(task.doneCount)/\(task.steps.count)" : (task.status == "done" ? "Done" : "Failed"))
+                    .font(.caption2.weight(.bold))
+                    .monospacedDigit()
+                    .foregroundStyle(stepColor(task.status == "running" ? "running" : task.status))
+            }
+            ForEach(Array(task.steps.prefix(maxSteps).enumerated()), id: \.offset) { _, step in
+                HStack(spacing: 5) {
+                    Image(systemName: stepIcon(step.status))
+                        .font(.caption2)
+                        .foregroundStyle(stepColor(step.status))
+                    Text(step.text)
+                        .font(.caption)
+                        .foregroundStyle(step.status == "pending" ? Color.white.opacity(0.55) : Color.white)
+                        .lineLimit(1)
+                }
+            }
+            if task.steps.count > maxSteps {
+                Text("+\(task.steps.count - maxSteps) more").font(.caption2).foregroundStyle(.white.opacity(0.5))
+            }
+        }
+    }
+}
+
+struct TasksWidgetView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: TasksEntry
+
+    private var running: [SharedStore.TaskSnap] { entry.tasks.filter { $0.status == "running" } }
+    private var shown: [SharedStore.TaskSnap] {
+        let r = running
+        return r.isEmpty ? Array(entry.tasks.prefix(1)) : r
+    }
+
+    var body: some View {
+        if !entry.shared {
+            message("Open Putshi to see your tasks here.", sub: "This install can't share tasks with widgets.")
+        } else if entry.tasks.isEmpty {
+            message("No tasks yet", sub: "Ask Putshi for something with a few steps.")
+        } else {
+            switch family {
+            case .systemSmall: small
+            case .systemLarge: large
+            default: medium
+            }
+        }
+    }
+
+    private func message(_ title: String, sub: String) -> some View {
+        HStack(spacing: 10) {
+            MochiPose(state: .idle, outfit: .none, showBadge: false).frame(width: 44, height: 44)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.subheadline.weight(.semibold))
+                Text(sub).font(.caption).foregroundStyle(.white.opacity(0.6))
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var small: some View {
+        let t = shown[0]
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                MochiPose(state: t.status == "running" ? .working : (t.status == "done" ? .finished : .error),
+                          outfit: .none, showBadge: false)
+                    .frame(width: 30, height: 30)
+                Spacer()
+                Text("\(t.doneCount)/\(t.steps.count)").font(.caption.weight(.bold)).monospacedDigit()
+            }
+            Text(t.title).font(.subheadline.weight(.semibold)).lineLimit(2)
+            Text(t.currentStep).font(.caption).foregroundStyle(Color(hex: "#3B9EFF")).lineLimit(2)
+            Spacer(minLength: 0)
+            ProgressView(value: Double(t.doneCount), total: Double(max(t.steps.count, 1)))
+                .tint(Color(hex: "#3B9EFF"))
+        }
+    }
+
+    private var medium: some View {
+        HStack(alignment: .top, spacing: 12) {
+            MochiPose(state: running.isEmpty ? .idle : .working, outfit: .none, showBadge: false)
+                .frame(width: 46, height: 46)
+            TaskBlock(task: shown[0], maxSteps: 4)
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var large: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                MochiPose(state: running.isEmpty ? .idle : .working, outfit: .none, showBadge: false)
+                    .frame(width: 34, height: 34)
+                Text("Putshi tasks").font(.headline)
+                Spacer()
+                if !running.isEmpty {
+                    Text("\(running.count) running").font(.caption.weight(.semibold)).foregroundStyle(Color(hex: "#3B9EFF"))
+                }
+            }
+            ForEach(Array(entry.tasks.sorted { a, b in
+                (a.status == "running" ? 0 : 1, b.updated) < (b.status == "running" ? 0 : 1, a.updated)
+            }.prefix(3))) { t in
+                TaskBlock(task: t, maxSteps: 4)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+struct TasksWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: SharedStore.tasksWidgetKind, provider: TasksProvider()) { entry in
+            TasksWidgetView(entry: entry)
+                .foregroundStyle(.white)
+                .containerBackground(for: .widget) { Color(hex: "#0B0D12") }
+                .widgetURL(URL(string: "putshi://open"))
+        }
+        .configurationDisplayName("Putshi tasks")
+        .description("What Putshi is working on, step by step.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 

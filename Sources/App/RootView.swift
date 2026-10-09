@@ -20,7 +20,7 @@ struct RootView: View {
             PlaygroundView(model: model)
                 .tabItem { Label("Play", systemImage: "face.smiling") }
                 .tag(Tab.play)
-            SettingsView(model: model)
+            SettingsView(model: model, agent: agent)
                 .tabItem { Label("Settings", systemImage: "gearshape.fill") }
                 .tag(Tab.settings)
         }
@@ -217,6 +217,13 @@ struct TasksView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(hex: "#0B0D12").ignoresSafeArea())
             .navigationTitle("Tasks")
+            .toolbar {
+                if agent.tasks.contains(where: { $0.status != .running }) {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Clear finished") { agent.clearFinishedTasks() }
+                    }
+                }
+            }
         }
     }
 }
@@ -293,6 +300,8 @@ struct TaskCard: View {
 
 struct SettingsView: View {
     @ObservedObject var model: MochiModel
+    @ObservedObject var agent: PutshiAgent
+    @State private var confirmForget = false
     @ObservedObject private var settings = PutshiSettings.shared
     @State private var pcCheck: String?
     @State private var checking = false
@@ -327,6 +336,32 @@ struct SettingsView: View {
                     Text("Your PC")
                 } footer: {
                     Text("Run the Putshi bridge on your PC, then paste the address and token it prints.")
+                }
+
+                Section {
+                    if agent.facts.isEmpty {
+                        Text("Nothing yet. Tell Putshi things like “remember I use Revit 2025” and they'll show up here.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(agent.facts.reversed()) { fact in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(fact.text)
+                                Text(fact.created, style: .date).font(.caption2).foregroundStyle(.tertiary)
+                            }
+                            .swipeActions {
+                                Button("Forget", role: .destructive) { agent.forget(fact) }
+                            }
+                        }
+                        Button("Forget everything", role: .destructive) { confirmForget = true }
+                    }
+                } header: {
+                    Text("Memory")
+                } footer: {
+                    Text("Putshi reads these in every conversation. Swipe left on one to forget it.")
+                }
+                .confirmationDialog("Forget everything Putshi remembers?", isPresented: $confirmForget, titleVisibility: .visible) {
+                    Button("Forget everything", role: .destructive) { agent.forgetEverything() }
                 }
 
                 Section("Character") {

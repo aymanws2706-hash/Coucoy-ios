@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 // MARK: - What the screens show
 
@@ -23,13 +24,31 @@ struct TaskStep: Identifiable, Equatable {
 }
 
 struct PutshiTask: Identifiable {
+    var snap: SharedStore.TaskSnap {
+        SharedStore.TaskSnap(
+            id: id, title: title, status: status.rawValue,
+            steps: steps.map { .init(text: $0.text, status: $0.status.rawValue) },
+            summary: summary, created: created, updated: Date())
+    }
+
+    init(id: String, title: String, steps: [TaskStep]) {
+        self.id = id; self.title = title; self.steps = steps
+    }
+
+    init(_ s: SharedStore.TaskSnap) {
+        id = s.id; title = s.title
+        steps = s.steps.map { TaskStep(text: $0.text, status: TaskStep.Status(rawValue: $0.status) ?? .pending) }
+        status = Status(rawValue: s.status) ?? .done
+        summary = s.summary; created = s.created
+    }
+
     enum Status: String { case running, done, failed }
     let id: String
     var title: String
     var steps: [TaskStep]
     var status: Status = .running
     var summary: String = ""
-    let created = Date()
+    var created = Date()
 
     var doneCount: Int { steps.filter { $0.status == .done }.count }
     var currentStep: String {
@@ -47,7 +66,12 @@ struct PutshiTask: Identifiable {
 @MainActor
 final class PutshiAgent: ObservableObject {
     @Published private(set) var items: [ChatItem] = []
-    @Published private(set) var tasks: [PutshiTask] = []
+    @Published private(set) var tasks: [PutshiTask] = [] {
+        didSet { persistTasks() }
+    }
+    @Published private(set) var facts: [SharedStore.Fact] = SharedStore.loadFacts() {
+        didSet { SharedStore.saveFacts(facts) }
+    }
     @Published private(set) var busy = false
 
     private let mochi: MochiModel
@@ -59,6 +83,38 @@ final class PutshiAgent: ObservableObject {
 
     init(mochi: MochiModel) {
         self.mochi = mochi
+        // A task left "running" by a closed app can't still be running.
+        tasks = SharedStore.loadTasks().map { snap in
+            var t = PutshiTask(snap)
+            if t.status == .running { t.status = .failed; t.summary = "Interrupted when Putshi closed." }
+            return t
+        }
+    }
+
+    // MARK: Persistence
+
+    private var lastSaved: [SharedStore.TaskSnap] = []
+    private func persistTasks() {
+        let snaps = tasks.map(\.snap)
+        // Ignore the `updated` stamp when deciding whether anything changed.
+        let key = snaps.map { s -> SharedStore.TaskSnap in var c = s; c.updated = .distantPast; return c }
+        let old = lastSaved.map { s -> SharedStore.TaskSnap in var c = s; c.updated = .distantPast; return c }
+        guard key != old else { return }
+        lastSaved = snaps
+        SharedStore.saveTasks(snaps)
+        WidgetCenter.shared.reloadTimelines(ofKind: SharedStore.tasksWidgetKind)
+    }
+
+    func clearFinishedTasks() {
+        tasks.removeAll { $0.status != .running }
+    }
+
+    func forget(_ fact: SharedStore.Fact) {
+        facts.removeAll { $0.id == fact.id }
+    }
+
+    func forgetEverything() {
+        facts.removeAll()
     }
 
     // MARK: Chat
@@ -172,6 +228,8 @@ final class PutshiAgent: ObservableObject {
             case "finish_task": output = try finishTask(input)
             case "run_on_computer": output = try await runOnComputer(input)
             case "react": output = react(input)
+            case "remember": output = remember(input)
+            case "forget": output = forgetMatching(input)
             default: throw PutshiError(message: "Unknown tool \(name).")
             }
             return ["type": "tool_result", "tool_use_id": id, "content": output]
@@ -183,7 +241,8 @@ final class PutshiAgent: ObservableObject {
     private func createTask(_ input: [String: Any]) -> String {
         let title = input["title"] as? String ?? "Task"
         let steps = (input["steps"] as? [String] ?? []).map { TaskStep(text: $0) }
-        let task = PutshiTask(id: "t\(tasks.count + 1)", title: title, steps: steps)
+        let n = (tasks.compactMap { Int($0.id.dropFirst()) }.max() ?? 0) + 1
+        let task = PutshiTask(id: "t\(n)", title: title, steps: steps)
         tasks.insert(task, at: 0)
         showOnIsland(task)
         return "Created task \(task.id) with \(steps.count) steps."
@@ -220,6 +279,22 @@ final class PutshiAgent: ObservableObject {
         mochi.setState(ok ? .finished : .error)
         showOnIsland(tasks[t])
         return "Task \(tasks[t].id) closed."
+    }
+
+    private func remember(_ input: [String: Any]) -> String {
+        let text = (input["fact"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return "Nothing to remember." }
+        if facts.contains(where: { $0.text.caseInsensitiveCompare(text) == .orderedSame }) { return "Already remembered." }
+        facts.append(SharedStore.Fact(text: String(text.prefix(200))))
+        return "Remembered."
+    }
+
+    private func forgetMatching(_ input: [String: Any]) -> String {
+        let q = (input["text"] as? String ?? "").lowercased()
+        guard !q.isEmpty else { return "Nothing matched." }
+        let before = facts.count
+        facts.removeAll { $0.text.lowercased().contains(q) }
+        return "Forgot \(before - facts.count) fact(s)."
     }
 
     private func react(_ input: [String: Any]) -> String {
@@ -322,6 +397,18 @@ final class PutshiAgent: ObservableObject {
         you can do from the phone instead.
 
         Use react now and then to show emotion through the character (love, proud, surprised, wink, happy).
+
+        When the user tells you something lasting about themselves (preferences, projects, deadlines, \
+        people, how they like things done), call remember with one short fact. Call forget when they ask \
+        you to drop something. Don't announce routine saves.
+
+        Today is \(Date().formatted(date: .complete, time: .shortened)).
+
+        What you remember about the user:
+        \(facts.isEmpty ? "(nothing yet)" : facts.map { "- " + $0.text }.joined(separator: "\n"))
+
+        Recent tasks:
+        \(tasks.prefix(5).isEmpty ? "(none)" : tasks.prefix(5).map { "- \($0.title): \($0.status.rawValue)\($0.summary.isEmpty ? "" : " — " + $0.summary)" }.joined(separator: "\n"))
         """
     }
 
@@ -381,6 +468,28 @@ final class PutshiAgent: ObservableObject {
                     "instruction": ["type": "string", "description": "A complete, self-contained instruction for the PC agent."],
                 ],
                 "required": ["task_id", "instruction"],
+                "additionalProperties": false,
+            ],
+        ],
+        [
+            "name": "remember",
+            "description": "Save one short, lasting fact about the user to Putshi's memory. It is shown to you in every future conversation.",
+            "strict": true,
+            "input_schema": [
+                "type": "object",
+                "properties": ["fact": ["type": "string", "description": "One sentence, under 160 characters."]],
+                "required": ["fact"],
+                "additionalProperties": false,
+            ],
+        ],
+        [
+            "name": "forget",
+            "description": "Remove remembered facts that contain the given text.",
+            "strict": true,
+            "input_schema": [
+                "type": "object",
+                "properties": ["text": ["type": "string"]],
+                "required": ["text"],
                 "additionalProperties": false,
             ],
         ],
