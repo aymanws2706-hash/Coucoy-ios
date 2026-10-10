@@ -97,7 +97,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: coucou-windows
-          name: Coucou for Windows ${{ steps.files.outputs.version }} (personal build: settings re-centers, pill stays visible)
+          name: "Coucou for Windows ${{ steps.files.outputs.version }} (personal build, settings re-centers, pill stays visible)"
           body: |
             The original Coucou desktop app by Louis Raillé (MIT), built from commit ${{ env.COUCOU_SHA }}.
 
