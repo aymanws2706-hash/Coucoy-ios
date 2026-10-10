@@ -43,6 +43,17 @@ jobs:
           Set-Content -Path $f -Value $patched -NoNewline
           Select-String -Path $f -Pattern "win.center" | Select-Object -First 2
 
+      # Personal fix: keep the small pill on screen instead of hiding it
+      # completely after 60 s of inactivity.
+      - name: Patch the island to stay visible
+        shell: pwsh
+        run: |
+          $f = "coucou/windows/src/island/fsm.ts"
+          $src = Get-Content $f -Raw
+          if ($src -notmatch 'petitToHiddenDelay = 60;') { throw "island timing changed upstream; patch not applied" }
+          Set-Content -Path $f -Value ($src -replace 'petitToHiddenDelay = 60;', 'petitToHiddenDelay = 1_000_000; // personal build: stay visible') -NoNewline
+          Select-String -Path $f -Pattern "petitToHiddenDelay ="
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -86,7 +97,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: coucou-windows
-          name: Coucou for Windows ${{ steps.files.outputs.version }} (personal build, settings re-centers)
+          name: Coucou for Windows ${{ steps.files.outputs.version }} (personal build: settings re-centers, pill stays visible)
           body: |
             The original Coucou desktop app by Louis Raillé (MIT), built from commit ${{ env.COUCOU_SHA }}.
 
