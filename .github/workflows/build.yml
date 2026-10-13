@@ -5,6 +5,8 @@ name: Build Putshi.ipa
 on:
   push:
     branches: [main]
+    # The desktop app has its own workflow.
+    paths-ignore: ["desktop/**", ".github/workflows/coucou-windows.yml"]
   workflow_dispatch:
 
 permissions:

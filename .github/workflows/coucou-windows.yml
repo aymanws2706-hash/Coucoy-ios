@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: [".github/workflows/coucou-windows.yml"]
+    paths: [".github/workflows/coucou-windows.yml", "desktop/**"]
 
 permissions:
   contents: write
@@ -30,29 +30,20 @@ jobs:
           git checkout -q FETCH_HEAD
           git log -1 --format="%h %s"
 
-      # Personal fix: re-center the settings window every time it opens, so it
-      # can't stay off-screen after a display or scaling change.
-      - name: Patch settings window placement
-        shell: pwsh
-        run: |
-          $f = "coucou/windows/src-tauri/src/lib.rs"
-          $src = Get-Content $f -Raw
-          $pattern = '(let _ = win\.unminimize\(\);)(\r?\n)(\s*)(let _ = win\.show\(\);)'
-          if ($src -notmatch $pattern) { throw "settings window code changed upstream; patch not applied" }
-          $patched = ([regex]$pattern).Replace($src, '$1$2$3let _ = win.center();$2$3$4', 1)
-          Set-Content -Path $f -Value $patched -NoNewline
-          Select-String -Path $f -Pattern "win.center" | Select-Object -First 2
+      # Personal build: the files in desktop/overlay replace or add to
+      # Coucou's own. They carry the always-visible notch with the clock and PC
+      # stats, the "This PC" panel the island opens on, and the settings window
+      # that re-centres itself. See desktop/README.md.
+      - uses: actions/checkout@v4
+        with:
+          path: mine
+          sparse-checkout: desktop
 
-      # Personal fix: keep the small pill on screen instead of hiding it
-      # completely after 60 s of inactivity.
-      - name: Patch the island to stay visible
-        shell: pwsh
+      - name: Apply the personal changes
+        shell: bash
         run: |
-          $f = "coucou/windows/src/island/fsm.ts"
-          $src = Get-Content $f -Raw
-          if ($src -notmatch 'petitToHiddenDelay = 60;') { throw "island timing changed upstream; patch not applied" }
-          Set-Content -Path $f -Value ($src -replace 'petitToHiddenDelay = 60;', 'petitToHiddenDelay = 1_000_000; // personal build: stay visible') -NoNewline
-          Select-String -Path $f -Pattern "petitToHiddenDelay ="
+          cp -rv mine/desktop/overlay/. coucou/windows/
+          grep -q "mod sysstats" coucou/windows/src-tauri/src/lib.rs
 
       - uses: actions/setup-node@v4
         with:
@@ -97,7 +88,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: coucou-windows
-          name: "Coucou for Windows ${{ steps.files.outputs.version }} (personal build, settings re-centers, pill stays visible)"
+          name: "Coucou for Windows ${{ steps.files.outputs.version }} (personal build, notch with PC stats)"
           body: |
             The original Coucou desktop app by Louis Raillé (MIT), built from commit ${{ env.COUCOU_SHA }}.
 
