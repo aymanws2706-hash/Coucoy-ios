@@ -12,6 +12,7 @@ import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
 import { buildPc } from "./pc";
+import { buildToday } from "./today";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -79,6 +80,7 @@ function stack(padLeft: number, padRight: number, ...children: Node[]): HTMLElem
 // ── Header ────────────────────────────────────────────────────────────────────
 
 export function buildHeader(actions: ViewActions): ViewHost {
+  const tabToday = h("button", { class: "tab", title: "Today", onclick: () => go("today") }, svg(ICONS.sun, 14, { stroke: 1.8 }));
   const tabPc = h("button", { class: "tab", title: "This PC", onclick: () => go("pc") }, svg(ICONS.chip, 13, { stroke: 2 }));
   const tabHome = h("button", { class: "tab", title: "Overview", onclick: () => go("overview") }, svg(ICONS.house, 13));
   const tabChat = h("button", { class: "tab", title: "Ask", onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
@@ -95,7 +97,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabPc, tabHome, tabChat, tabDrop),
+    h("div", { class: "tabs" }, tabToday, tabPc, tabHome, tabChat, tabDrop),
     h("div", { class: "header-actions" }, gearBtn, soundBtn),
   );
 
@@ -103,6 +105,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     el,
     sync() {
       const v = State.view;
+      tabToday.classList.toggle("on", v === "today");
       tabPc.classList.toggle("on", v === "pc");
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
@@ -497,6 +500,7 @@ export function buildViews(
   onChatHeightChange: () => void,
 ): Map<IslandViewName, ViewHost> {
   const map = new Map<IslandViewName, ViewHost>();
+  map.set("today", buildToday(actions));
   map.set("pc", buildPc(actions));
   map.set("overview", buildOverview(actions));
   map.set("empty", buildEmpty(actions));

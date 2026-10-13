@@ -2,6 +2,8 @@
 // Drawn on a 24×24 grid so they read at the same optical size.
 
 export const ICONS = {
+  // sun.max (stroked) — personal build's "Today" tab
+  sun: "M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6z M12 2.5v2.2 M12 19.3v2.2 M2.5 12h2.2 M19.3 12h2.2 M5.3 5.3l1.6 1.6 M17.1 17.1l1.6 1.6 M5.3 18.7l1.6-1.6 M17.1 6.9l1.6-1.6",
   // mic.fill
   mic: "M12 2.5a3.2 3.2 0 0 0-3.2 3.2v6a3.2 3.2 0 0 0 6.4 0v-6A3.2 3.2 0 0 0 12 2.5zM6.2 10.6a.9.9 0 0 0-1.8 0 7.6 7.6 0 0 0 6.7 7.55V21h1.8v-2.85a7.6 7.6 0 0 0 6.7-7.55.9.9 0 0 0-1.8 0 5.8 5.8 0 0 1-11.6 0z",
   // cpu (stroked) — personal build's "This PC" tab

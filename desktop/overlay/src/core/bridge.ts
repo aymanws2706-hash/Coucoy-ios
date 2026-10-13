@@ -3,7 +3,7 @@
 // `npm run dev` alone.
 
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Settings } from "./state";
 
@@ -104,12 +104,34 @@ export const Bridge = {
   topApps: () => call<AppUsage[]>("top_apps"),
   killApp: (name: string) => call<number>("kill_app", { name }),
 
+  weather: (force = false) => callOrThrow<Weather>("weather", { force }),
+  calendar: (force = false) => callOrThrow<CalendarEvent[]>("calendar", { force }),
+
   /** Desktop info for the notch and the PC view. */
   systemStats: () => call<SystemStats>("system_stats"),
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
 };
+
+export interface Weather {
+  city: string;
+  temp: number;
+  /** WMO weather code. */
+  code: number;
+  isDay: boolean;
+  high: number;
+  low: number;
+  hours: { hour: number; temp: number; code: number; rain: number }[];
+}
+
+export interface CalendarEvent {
+  title: string;
+  startMs: number;
+  endMs: number;
+  allDay: boolean;
+  location: string;
+}
 
 export interface AppUsage {
   name: string;
@@ -191,6 +213,12 @@ export async function onDragDrop(handler: (e: DragDropPayload) => void) {
   return getCurrentWebview().onDragDropEvent((event) => {
     handler(event.payload as DragDropPayload);
   });
+}
+
+/** Tells the other window something changed (settings → island). */
+export async function emitEvent(name: string) {
+  if (!IS_TAURI) return;
+  await emit(name);
 }
 
 export async function onEvent<T>(name: string, handler: (payload: T) => void) {

@@ -111,6 +111,11 @@ pub fn definitions() -> Vec<Value> {
             "input_schema": { "type": "object", "properties": {} }
         }),
         json!({
+            "name": "today",
+            "description": "The weather where the user is (now, next hours, high/low) and their calendar for the next 7 days.",
+            "input_schema": { "type": "object", "properties": {} }
+        }),
+        json!({
             "name": "open",
             "description": "Open a file, folder, app or web address on this PC, like double-clicking it. The user approves first, except for http(s) links.",
             "input_schema": { "type": "object", "properties": {
@@ -179,6 +184,10 @@ pub async fn run(app: &AppHandle, name: &str, input: &Value) -> Result<String, S
         "pc_status" => {
             step(app, "Checking the PC");
             Ok(pc_status(app))
+        }
+        "today" => {
+            step(app, "Checking your day");
+            Ok(today(app).await)
         }
         "open" => {
             let target = s("target");
@@ -379,6 +388,42 @@ fn pc_status(app: &AppHandle) -> String {
     out.push_str("Top apps:\n");
     for p in stats.top_processes(8) {
         out.push_str(&format!("  {}  CPU {:.0}%  memory {}\n", p.name, p.cpu, human_size(p.memory)));
+    }
+    out
+}
+
+async fn today(app: &AppHandle) -> String {
+    let day = app.state::<crate::day::Day>();
+    let mut out = String::new();
+    match day.weather(false).await {
+        Ok(w) => {
+            out.push_str(&format!(
+                "Weather in {}: {:.0}°C, WMO code {}, high {:.0} low {:.0}.\nNext hours:",
+                w.city, w.temp, w.code, w.high, w.low
+            ));
+            for h in &w.hours {
+                out.push_str(&format!(" {}h {:.0}° rain {}%;", h.hour, h.temp, h.rain));
+            }
+            out.push('\n');
+        }
+        Err(e) => out.push_str(&format!("Weather unavailable: {e}\n")),
+    }
+    match day.calendar(false).await {
+        Ok(events) if events.is_empty() => out.push_str("Calendar: nothing in the next 7 days, or no calendar link set in Settings.\n"),
+        Ok(events) => {
+            out.push_str("Calendar (local times):\n");
+            for e in events {
+                out.push_str(&format!(
+                    "- {} | {} → {}{}{}\n",
+                    e.title,
+                    crate::day::local_label(e.start_ms),
+                    crate::day::local_label(e.end_ms),
+                    if e.all_day { " | all day" } else { "" },
+                    if e.location.is_empty() { String::new() } else { format!(" | {}", e.location) }
+                ));
+            }
+        }
+        Err(e) => out.push_str(&format!("Calendar unavailable: {e}\n")),
     }
     out
 }

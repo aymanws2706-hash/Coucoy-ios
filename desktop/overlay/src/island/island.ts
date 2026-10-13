@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, onEvent, type SystemStats } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -17,7 +17,7 @@ import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from ".
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
-import { notchLine } from "../views/pc";
+import { notchLine } from "../views/today";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
 
@@ -236,22 +236,92 @@ export class Island {
     this.startStats();
   }
 
+  // ── PC health alerts (personal build) ───────────────────────────────────────
+
+  private busyCpu = 0;
+  private busyMem = 0;
+  /** Each alert fires once, then waits until the condition clears. */
+  private alerted = new Set<string>();
+  private alertTimer: number | null = null;
+
+  private checkHealth(s: SystemStats) {
+    this.busyCpu = s.cpu >= 90 ? this.busyCpu + 1 : 0;
+    const memPct = s.memTotal ? (s.memUsed / s.memTotal) * 100 : 0;
+    this.busyMem = memPct >= 92 ? this.busyMem + 1 : 0;
+    const diskFree = s.diskTotal ? ((s.diskTotal - s.diskUsed) / s.diskTotal) * 100 : 100;
+    const lowBattery = s.battery != null && !s.charging && s.battery <= 15;
+
+    // ~20 s of samples (2 s apart) before calling CPU or memory a problem.
+    this.raise("cpu", this.busyCpu >= 10, `CPU at ${Math.round(s.cpu)}% — open This PC to see why`);
+    this.raise("mem", this.busyMem >= 10, `Memory almost full (${Math.round(memPct)}%)`);
+    this.raise("disk", diskFree < 5, `Disk C: almost full — ${Math.round(diskFree)}% free`);
+    this.raise("battery", lowBattery, `Battery low: ${s.battery}% — plug in soon`);
+  }
+
+  private raise(id: string, on: boolean, text: string) {
+    if (!on) {
+      this.alerted.delete(id);
+      return;
+    }
+    if (this.alerted.has(id)) return;
+    this.alerted.add(id);
+    State.alertText = text;
+    this.engine.triggerEmote("surprised");
+    Sound.play(id === "battery" ? "error" : "approval");
+    if (this.alertTimer != null) window.clearTimeout(this.alertTimer);
+    this.alertTimer = window.setTimeout(() => {
+      State.alertText = null;
+      State.notify();
+    }, 20_000);
+    State.notify();
+  }
+
   // ── Desktop stats (personal build) ──────────────────────────────────────────
 
   /**
-   * Samples the PC every 2 s while the island is on screen, every 30 s while
-   * it is hidden (just to keep the clock right). Each sample marks the DOM
+   * Samples the PC every 2 s, every 30 s while paused (just to keep the clock
+   * right). Each sample marks the DOM
    * dirty once; nothing animates because of it.
    */
   private startStats() {
     const tick = async () => {
       const s = await Bridge.systemStats();
-      if (s) State.stats = s;
+      if (s) {
+        State.stats = s;
+        this.checkHealth(s);
+      }
+      // The per-app list costs more to read: only while it's on screen.
+      if (State.mode === "expanded" && State.view === "pc") {
+        const apps = await Bridge.topApps();
+        if (apps) State.topApps = apps;
+      }
       State.notify();
-      const delay = State.mode === "hidden" || State.paused ? 30_000 : 2_000;
+      // The notch is always on screen in this build; slow down only when paused.
+      const delay = State.paused ? 30_000 : 2_000;
       window.setTimeout(() => void tick(), delay);
     };
     void tick();
+
+    // Weather and calendar: every 5 minutes (Rust caches both anyway).
+    const day = async (force = false) => {
+      try {
+        State.weather = await Bridge.weather(force);
+        State.weatherError = null;
+      } catch (err) {
+        State.weatherError = String(err).replace(/^Error:\s*/, "");
+      }
+      try {
+        State.events = await Bridge.calendar(force);
+        State.calendarError = null;
+      } catch (err) {
+        State.calendarError = String(err).replace(/^Error:\s*/, "");
+      }
+      State.notify();
+    };
+    void day();
+    window.setInterval(() => void day(), 5 * 60_000);
+    // The settings window saved a city or a calendar link.
+    void onEvent<null>("day-changed", () => void day(true));
   }
 
   // ── FSM ─────────────────────────────────────────────────────────────────────
@@ -892,6 +962,12 @@ export class Island {
     if (this.lastSyncedView !== State.view) {
       const wasChat = this.lastSyncedView === "prompt";
       this.lastSyncedView = State.view;
+      if (State.view === "pc") {
+        void Bridge.topApps().then((apps) => {
+          if (apps) State.topApps = apps;
+          State.notify();
+        });
+      }
       if (State.view === "prompt") {
         void Bridge.focusWindow(true);
         window.setTimeout(() => this.views.get("prompt")?.focus?.(), 120);

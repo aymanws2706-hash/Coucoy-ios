@@ -2,6 +2,7 @@
 
 mod agent;
 mod claude;
+mod day;
 mod files;
 mod hooks;
 mod integrations;
@@ -171,6 +172,18 @@ fn open_in_vscode(path: Option<String>) -> bool {
 #[tauri::command]
 fn quit_app(app: AppHandle) {
     app.exit(0);
+}
+
+/// Weather where you are (or in the city set in Settings), cached 15 min.
+#[tauri::command]
+async fn weather(day: State<'_, day::Day>, force: bool) -> Result<day::Weather, String> {
+    day.weather(force).await
+}
+
+/// The next week of events from the calendar's private iCal link.
+#[tauri::command]
+async fn calendar(day: State<'_, day::Day>, force: bool) -> Result<Vec<day::Event>, String> {
+    day.calendar(force).await
 }
 
 /// Allow / Deny on a card Mochi's own chat raised (not a Claude Code one).
@@ -422,6 +435,7 @@ pub fn run() {
         .manage(Chat::default())
         .manage(sysstats::Stats::default())
         .manage(agent::Approvals::default())
+        .manage(day::Day::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -454,6 +468,8 @@ pub fn run() {
             start_dictation,
             top_apps,
             kill_app,
+            weather,
+            calendar,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

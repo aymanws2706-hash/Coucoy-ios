@@ -5,6 +5,7 @@
 export type IslandMode = "hidden" | "compact" | "expanded";
 
 export type IslandViewName =
+  | "today"
   | "pc"
   | "overview"
   | "empty"
@@ -57,7 +58,7 @@ export const PANEL_H = 320;
 // No notch on a PC: these are the hidden/compact sizes from docs/SPEC.md.
 export const NOTCH_W = 184;
 export const NOTCH_H = 32;
-export const COMPACT_W = 300; // personal build: room for the clock and stats
+export const COMPACT_W = 344; // personal build: room for the clock, weather and stats
 export const EXPANDED_W = 640;
 
 export const ROUNDED_CORNER = 14; // hidden / compact
@@ -68,7 +69,8 @@ export const WAKE_STRIP_W = 240;
 export const WAKE_STRIP_H = 6;
 
 export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
-  pc: { height: 172, botX: 62, botY: null, botDiameter: 54, agentMode: "none" },
+  today: { height: 188, botX: 62, botY: null, botDiameter: 54, agentMode: "none" },
+  pc: { height: 188, botX: 62, botY: null, botDiameter: 54, agentMode: "none" },
   overview: { height: 160, botX: 68, botY: null, botDiameter: 58, agentMode: "pills" },
   empty: { height: 160, botX: 70, botY: null, botDiameter: 62, agentMode: "none" },
   approval: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },

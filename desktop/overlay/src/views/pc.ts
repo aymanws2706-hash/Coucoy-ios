@@ -2,14 +2,14 @@
 // stats line shown in the compact notch.
 
 import "./pc.css";
-import { h } from "./dom";
+import { h, clear } from "./dom";
 import { State } from "../core/state";
-import type { SystemStats } from "../core/bridge";
+import { Bridge, type AppUsage, type SystemStats } from "../core/bridge";
 import type { ViewActions, ViewHost } from "./views";
 
 const GB = 1024 ** 3;
 
-function pct(used: number, total: number): number {
+export function pct(used: number, total: number): number {
   return total > 0 ? Math.round((used / total) * 100) : 0;
 }
 
@@ -71,74 +71,118 @@ function meter(): Meter {
   };
 }
 
+function appRow(app: AppUsage, actions: ViewActions): HTMLElement {
+  const name = h("span", { class: "ap-name", text: app.name });
+  name.title = `${app.processes} process${app.processes === 1 ? "" : "es"}`;
+  const cpu = h("span", { class: "ap-cpu", text: `${app.cpu.toFixed(app.cpu < 10 ? 1 : 0)}%` });
+  cpu.style.color = app.cpu >= 50 ? "var(--red)" : app.cpu >= 20 ? "var(--amber)" : "";
+  const mem = h("span", { class: "ap-mem", text: app.memory >= GB ? `${gb(app.memory)} GB` : `${Math.round(app.memory / 1024 ** 2)} MB` });
+  const kill = h("button", { class: "ap-kill", title: `Close ${app.name}`, text: "✕" });
+  const row = h("div", { class: "ap-row" }, name, cpu, mem, kill);
+
+  // Ask right in the row: closing an app can lose unsaved work.
+  kill.addEventListener("click", () => {
+    actions.blip();
+    clear(row);
+    const yes = h("button", { class: "ap-yes", text: "Close" });
+    const no = h("button", { class: "ap-no", text: "Keep" });
+    row.classList.add("confirm");
+    const ask = h("span", { class: "ap-ask", text: `Close ${app.name}?` });
+    ask.title = "Anything unsaved in it is lost.";
+    row.append(ask, no, yes);
+    no.addEventListener("click", () => {
+      row.classList.remove("confirm");
+      clear(row);
+      row.append(name, cpu, mem, kill);
+    });
+    yes.addEventListener("click", async () => {
+      clear(row);
+      row.append(h("span", { class: "ap-ask", text: `Closing ${app.name}…` }));
+      const n = (await Bridge.killApp(app.name)) ?? 0;
+      clear(row);
+      row.append(h("span", { class: "ap-ask", text: n > 0 ? `Closed ${app.name}.` : `Windows didn't let me close ${app.name}.` }));
+      State.topApps = State.topApps.filter((a) => a.name !== app.name || n === 0);
+    });
+  });
+  return row;
+}
+
 export function buildPc(actions: ViewActions): ViewHost {
-  const time = h("div", { class: "pc-time" });
-  const date = h("div", { class: "pc-date" });
-  const net = h("div", { class: "pc-net" });
-  const host = h("div", { class: "pc-host" });
   const cpu = meter();
   const mem = meter();
   const disk = meter();
   const fourth = meter();
+  const info = h("div", { class: "ap-info" });
+  const apps = h("div", { class: "ap-list" });
 
   const body = h(
     "div",
     { class: "pc" },
-    h("div", { class: "pc-clock" }, time, date, net, host),
     h("div", { class: "pc-meters" }, cpu.el, mem.el, disk.el, fourth.el),
+    h("div", { class: "ap" }, h("div", { class: "ap-head" }, h("span", { text: "Top apps" }), info), apps),
   );
   const card = h("div", { class: "card" }, body);
-  card.addEventListener("dblclick", () => actions.openSettingsWindow());
+
+  let appsKey: string | null = null;
 
   return {
     el: h("div", { class: "view" }, card),
     sync() {
-      const now = new Date();
-      time.textContent = clock(now);
-      date.textContent = now.toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" });
-
       const s: SystemStats | null = State.stats;
       if (!s) {
-        net.textContent = "Reading your PC…";
-        host.textContent = "";
+        info.textContent = "Reading your PC…";
         cpu.set("CPU", "–", 0);
         mem.set("Memory", "–", 0);
-        disk.set("Disk", "–", 0);
+        disk.set("Disk C:", "–", 0);
         fourth.set("Battery", "–", 0);
         return;
       }
-      net.textContent = `↓ ${rate(s.netDown)}  ↑ ${rate(s.netUp)}`;
-      host.textContent = `On for ${uptime(s.uptimeSecs)}`;
-      host.title = s.host;
+      info.textContent = `↓ ${rate(s.netDown)}  ↑ ${rate(s.netUp)}  ·  on ${uptime(s.uptimeSecs)}`;
+      info.title = s.host;
 
       const c = Math.round(s.cpu);
       cpu.set("CPU", `${c}%`, c);
       const m = pct(s.memUsed, s.memTotal);
-      mem.set("Memory", `${gb(s.memUsed)} / ${gb(s.memTotal)} GB`, m);
+      mem.set("Memory", `${m}%`, m);
+      mem.el.title = `${gb(s.memUsed)} of ${gb(s.memTotal)} GB in use`;
       const d = pct(s.diskUsed, s.diskTotal);
-      disk.set("Disk C:", `${gb(s.diskTotal - s.diskUsed)} GB free`, d);
+      disk.set("Free on C:", `${Math.round((s.diskTotal - s.diskUsed) / GB)} GB`, d);
+      disk.el.title = `${gb(s.diskUsed)} of ${gb(s.diskTotal)} GB used`;
       if (s.battery != null) {
         const b = s.battery;
         const color = s.charging ? "var(--green-2)" : b <= 20 ? "var(--red)" : b <= 40 ? "var(--amber)" : "var(--green-2)";
-        fourth.set(s.charging ? "Battery · charging" : "Battery", `${b}%`, b, color);
+        fourth.set(s.charging ? "Battery ⚡" : "Battery", `${b}%`, b, color);
       } else {
         const total = s.netDown + s.netUp;
         // A desktop has no battery: show how busy the network is instead,
         // on a 10 MB/s scale.
         fourth.set("Network", rate(total), (total / (10 * 1024 ** 2)) * 100, "var(--cyan)");
       }
+
+      // Rebuild the list only when names change, and never while a row is
+      // asking "Close …?", or the question would vanish under the cursor.
+      if (apps.querySelector(".confirm")) return;
+      const list = State.topApps.slice(0, 4);
+      const key = list.map((a) => a.name).join("|");
+      if (key !== appsKey) {
+        appsKey = key;
+        clear(apps);
+        for (const a of list) apps.append(appRow(a, actions));
+        if (list.length === 0) apps.append(h("div", { class: "td-empty", text: "Measuring…" }));
+      } else {
+        // Same apps: just refresh the numbers in place.
+        list.forEach((a, i) => {
+          const row = apps.children[i] as HTMLElement | undefined;
+          if (!row) return;
+          const cpuEl = row.querySelector(".ap-cpu") as HTMLElement | null;
+          const memEl = row.querySelector(".ap-mem") as HTMLElement | null;
+          if (cpuEl) {
+            cpuEl.textContent = `${a.cpu.toFixed(a.cpu < 10 ? 1 : 0)}%`;
+            cpuEl.style.color = a.cpu >= 50 ? "var(--red)" : a.cpu >= 20 ? "var(--amber)" : "";
+          }
+          if (memEl) memEl.textContent = a.memory >= GB ? `${gb(a.memory)} GB` : `${Math.round(a.memory / 1024 ** 2)} MB`;
+        });
+      }
     },
   };
-}
-
-/** One line for the compact notch: "14:32 · CPU 12% · 82%". */
-export function notchLine(): string {
-  const parts = [clock()];
-  const s = State.stats;
-  if (s) {
-    parts.push(`CPU ${Math.round(s.cpu)}%`);
-    if (s.battery != null) parts.push(`${s.charging ? "⚡" : ""}${s.battery}%`);
-    else parts.push(`RAM ${pct(s.memUsed, s.memTotal)}%`);
-  }
-  return parts.join("  ·  ");
 }

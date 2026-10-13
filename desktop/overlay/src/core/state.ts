@@ -2,7 +2,7 @@
 
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
-import type { SystemStats } from "./bridge";
+import type { AppUsage, CalendarEvent, SystemStats, Weather } from "./bridge";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -142,6 +142,18 @@ class AppState {
   /** What Mochi's chat is doing right now ("Searching for …"), under the dots. */
   chatStep: string | null = null;
 
+  /** "Your day": weather and the next events, refreshed every few minutes. */
+  weather: Weather | null = null;
+  weatherError: string | null = null;
+  events: CalendarEvent[] = [];
+  calendarError: string | null = null;
+
+  /** A PC health warning shown in the notch for a while. */
+  alertText: string | null = null;
+
+  /** Apps using the most CPU / memory, refreshed while the PC view is open. */
+  topApps: AppUsage[] = [];
+
   /** Last desktop sample, refreshed while the island is on screen. */
   stats: SystemStats | null = null;
 
@@ -268,9 +280,9 @@ class AppState {
     this.loadIntegrationTasks();
   }
 
-  /** Personal build: the island opens on the desktop panel. */
+  /** Personal build: the island opens on the Today panel. */
   defaultView(): IslandViewName {
-    return "pc";
+    return "today";
   }
 }
 

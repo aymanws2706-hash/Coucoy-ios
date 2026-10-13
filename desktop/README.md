@@ -14,11 +14,15 @@ full copy of Coucou's file with these changes:
 | `src/views/chat.ts`, `src/main.ts` | Progress line, mic / read-aloud / new-chat buttons, Mochi approval cards, Ctrl+Shift+Space. |
 | `src-tauri/src/lib.rs` | New commands, global hotkey plugin; settings window re-centres when opened. |
 | `src-tauri/Cargo.toml` | `sysinfo`, `tauri-plugin-global-shortcut`, the Windows power API. |
-| `src/views/pc.ts`, `pc.css` | New. The "This PC" panel and the notch readout. |
+| `src-tauri/src/day.rs` | New. Weather (Open-Meteo, place from IP or a set city) and the next 7 days of a private iCal calendar link, with repeating events. Unit-tested. |
+| `src-tauri/src/secrets.rs` | Two more stored values: `weather-city`, `calendar-ics-url`. |
+| `src/settings/main.ts` | "Your day" section: city and calendar link. |
+| `src/views/today.ts` | New. Today panel (clock, weather now and next 6 hours, next events) and the notch line. |
+| `src/views/pc.ts`, `pc.css` | New. This PC panel: meters and top apps with a close button; styles for everything added. |
 | `src/views/views.ts`, `icons.ts` | "This PC" tab (chip icon) in the header. |
-| `src/island/island.ts` | Notch shows clock · CPU · battery; stats sampled every 2 s. |
+| `src/island/island.ts` | Notch line; stats every 2 s; weather/calendar every 5 min; CPU, memory, disk and battery alerts. |
 | `src/island/fsm.ts` | The notch never hides. |
-| `src/core/state.ts` | Opens on "This PC"; no integrations switched on by default. |
+| `src/core/state.ts` | Opens on Today; no integrations switched on by default. |
 | `src/core/layout.ts`, `bridge.ts` | `pc` view size, wider notch, `systemStats()`. |
 
 When moving to a newer Coucou commit, re-copy those upstream files and re-apply
