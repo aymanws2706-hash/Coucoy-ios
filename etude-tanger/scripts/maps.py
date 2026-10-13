@@ -28,10 +28,10 @@ def U(lon, lat):
     return TO.transform(lon, lat)
 
 # palette
-PAPER = "#E9E7E2"; LAND = "#EDEAE3"; SEA = "#A9C3CC"; SEA_D = "#8FB0BC"
-BUILT = "#DFA283"; BUILT_N = "#CFC6B9"; TREE = "#A3B78F"; SHRUB = "#C8CFAE"; GRASS = "#DAD9C2"; CROP = "#E5DEC8"
-BARE = "#E8E1D2"; WET = "#B4CABE"; INK = "#1E1E1E"; RED = "#C8462B"; ORANGE = "#D9824F"; BLUE = "#1F3A5F"
-GOLD = "#D9A441"; MUTED = "#6E6A64"; GREEN = "#5E7F4F"
+PAPER = "#EFEBE3"; LAND = "#EEE9DF"; SEA = "#A8C0C6"; SEA_D = "#8EAAB2"
+BUILT = "#D7A88A"; BUILT_N = "#CDBFAE"; TREE = "#A9BB97"; SHRUB = "#C9CFB2"; GRASS = "#DCDACA"; CROP = "#E6DFCC"
+BARE = "#E8E2D4"; WET = "#B7C9C0"; INK = "#23303A"; RED = "#B5563C"; ORANGE = "#C9965A"; BLUE = "#3E5A6E"
+GOLD = "#C9965A"; MUTED = "#7B746B"; GREEN = "#4F6B4A"
 
 # ------------------------------------------------------------------ data
 WC = rasterio.open("u_wc10.tif"); W = WC.read(1); WT = WC.transform
@@ -84,13 +84,13 @@ def landcover(ax, mode="full", alpha=1.0):
     elif mode == "neutral":
         cols = {10: "#CDD5C1", 20: "#DCDDCB", 30: "#E3E1D3", 40: "#E7E2D5", 50: BUILT_N, 60: "#E8E3D8", 80: SEA, 90: "#D2DCD3", 95: "#D2DCD3", 100: "#E3E1D3"}
     elif mode == "dark":
-        cols = {10: "#2F3B2E", 20: "#34392F", 30: "#383B33", 40: "#3A3A34", 50: "#7A4E3A", 60: "#3B3A36", 80: "#1C3440", 90: "#2E3B39", 95: "#2E3B39", 100: "#383B33"}
+        cols = {10: "#2C3A36", 20: "#323A38", 30: "#363C3B", 40: "#383C3B", 50: "#8A5A44", 60: "#393D3D", 80: "#1B2A33", 90: "#2C3A3A", 95: "#2C3A3A", 100: "#363C3B"}
     lut = np.zeros((256, 4))
-    base = LAND if mode != "dark" else "#363632"
+    base = LAND if mode != "dark" else "#353B3C"
     for i in range(256):
         lut[i] = matplotlib.colors.to_rgba(cols.get(i, base))
     img = lut[W]
-    sea = SEA if mode != "dark" else "#1C3440"
+    sea = SEA if mode != "dark" else "#1B2A33"
     img[SEA_M] = matplotlib.colors.to_rgba(sea)
     img[(W == 80) & ~SEA_M] = matplotlib.colors.to_rgba(SEA_D if mode != "dark" else "#24485A")
     ax.imshow(img, extent=WEXT, zorder=1, interpolation="nearest", alpha=alpha)
@@ -196,11 +196,11 @@ CITY_B = bnd_ll(-5.965, 35.695, -5.715, 35.825)
 # ================================================================== MAPS
 def m_territoire():
     b = bnd_ll(-6.06, 35.55, -5.40, 35.93)
-    fig, ax = fig_ax(b, 2400, 1700, bg="#2A2C2B")
+    fig, ax = fig_ax(b, 2400, 1700, bg="#23303A")
     landcover(ax, "dark"); hillshade(ax, 0.55, dark=True)
     ROADS[ROADS["class"].isin(["secondary", "tertiary"])].plot(ax=ax, color="#5A5A55", lw=0.35, zorder=6)
     ROADS[ROADS["class"].eq("primary")].plot(ax=ax, color="#B8865E", lw=0.8, zorder=7)
-    ROADS[ROADS["class"].isin(["motorway", "trunk"])].plot(ax=ax, color="#E07A3F", lw=1.9, zorder=8)
+    ROADS[ROADS["class"].isin(["motorway", "trunk"])].plot(ax=ax, color="#D08A5C", lw=1.9, zorder=8)
     RAIL.plot(ax=ax, color="#EDEDED", lw=0.9, zorder=9, linestyle=(0, (4, 3)))
     gpd.GeoSeries([CITY]).boundary.plot(ax=ax, color="white", lw=1.1, zorder=10)
     poles = [(1, -5.8054, 35.7880, "Port Tanger Ville\n& Tanja Marina Bay", RED), (2, -5.5015, 35.8836, "Port Tanger Med", BLUE), (3, -5.9129, 35.7260, "Aéroport\nIbn Battouta", "#7D8B96"),
@@ -211,10 +211,10 @@ def m_territoire():
     for n, lon, lat, name, c in poles:
         x, y = marker(ax, lon, lat, n, color=c, fs=8, ring=True)
         dx, dy = off[n]
-        txt(ax, x + dx, y + dy, name, size=8.5, color="white", halo="#2A2C2B", w="medium")
+        txt(ax, x + dx, y + dy, name, size=8.5, color="white", halo="#23303A", w="medium")
     for lon, lat, s in [(-5.83, 35.755, "TANGER"), (-5.37 - 0.0, 35.88, ""), (-5.61, 35.58, "")]:
         if s:
-            lbl(ax, lon, lat, s, size=15, color="white", halo="#2A2C2B", spacing=True, w="semibold")
+            lbl(ax, lon, lat, s, size=15, color="white", halo="#23303A", spacing=True, w="semibold")
     lbl(ax, -5.62, 35.915, "DÉTROIT DE GIBRALTAR", size=10, color="#7FA3B3", halo=None, spacing=True, style="italic")
     lbl(ax, -6.03, 35.72, "OCÉAN\nATLANTIQUE", size=9, color="#7FA3B3", halo=None, w="medium", style="italic")
     lbl(ax, -5.545, 35.62, "FAHS-ANJRA", size=8, color="#A9A39A", halo=None, spacing=True)
@@ -233,7 +233,7 @@ def m_arrondissements():
     landcover(ax, "neutral"); hillshade(ax, 0.3)
     T = pd.read_csv("a_table.csv")
     A = ARR.merge(T[["arr", "growth"]], on="arr")
-    cm = LinearSegmentedColormap.from_list("g", ["#E9D9C9", "#DFA283", "#C8462B", "#7E2614"])
+    cm = LinearSegmentedColormap.from_list("g", ["#E9D9C9", "#E2B9A2", "#B5563C", "#6E2F20"])
     for _, r in A.iterrows():
         v = (r.growth + 0.1) / 0.6
         gpd.GeoSeries([r.geometry]).plot(ax=ax, color=cm(np.clip(v, 0, 1)), alpha=0.55, zorder=3)
@@ -280,8 +280,8 @@ def kde_layer(ax, pts, cmap, bounds, bw=0.18, levels=8, alpha=0.85, z=8):
 def m_deux_villes():
     b = bnd_ll(-5.945, 35.715, -5.74, 35.81)
     inc = PL[PL.within(CITY.buffer(500))]
-    for name, fams, cmap, col in [("m04a_vitrine", ["lodging", "site", "beach"], LinearSegmentedColormap.from_list("t", ["#F3D6C8", "#DF8E6B", "#C8462B", "#7E2614"]), RED),
-                                  ("m04b_vecue", ["school", "health"], LinearSegmentedColormap.from_list("b", ["#D6DFEA", "#8EA6C2", "#3E5F86", "#1F3A5F"]), BLUE)]:
+    for name, fams, cmap, col in [("m04a_vitrine", ["lodging", "site", "beach"], LinearSegmentedColormap.from_list("t", ["#F1DCCF", "#D99A7C", "#B5563C", "#6E2F20"]), RED),
+                                  ("m04b_vecue", ["school", "health"], LinearSegmentedColormap.from_list("b", ["#DCE4E8", "#9DB2BF", "#5C7A8E", "#2F4657"]), BLUE)]:
         fig, ax = fig_ax(b, 1600, 1180)
         landcover(ax, "neutral"); hillshade(ax, 0.25)
         roads(ax, minor=True, scale=0.6, classes=["motorway", "trunk", "primary", "secondary", "tertiary", "residential"])
@@ -305,7 +305,7 @@ def m_littoral():
     ax.imshow(rgba, extent=WEXT, zorder=3)
     cs = ax.contour(np.flipud(dist) if False else dist, levels=[1000], extent=(WEXT[0], WEXT[1], WEXT[3], WEXT[2]), colors=RED, linewidths=0.9, linestyles="--", zorder=4)
     bm = (W == 50)
-    rgba2 = np.zeros(W.shape + (4,)); rgba2[bm & band] = matplotlib.colors.to_rgba("#B7553A", 0.9); rgba2[bm & ~band] = matplotlib.colors.to_rgba("#9A9184", 0.55)
+    rgba2 = np.zeros(W.shape + (4,)); rgba2[bm & band] = matplotlib.colors.to_rgba("#B5563C", 0.9); rgba2[bm & ~band] = matplotlib.colors.to_rgba("#9A9184", 0.55)
     ax.imshow(rgba2, extent=WEXT, zorder=4, interpolation="nearest")
     roads(ax, minor=False, scale=0.8)
     lod = PL[PL.fam.eq("lodging") & PL.within(CITY.buffer(800))].geometry
@@ -483,7 +483,7 @@ def m_synthese(proposals=False):
     rgba = np.zeros(W.shape + (4,)); rgba[bm] = matplotlib.colors.to_rgba("#C6B9A8", 0.9)
     ax.imshow(rgba, extent=WEXT, zorder=3, interpolation="nearest")
     trees = (W == 10)
-    rgbt = np.zeros(W.shape + (4,)); rgbt[trees] = matplotlib.colors.to_rgba("#B4C6A2", 0.9)
+    rgbt = np.zeros(W.shape + (4,)); rgbt[trees] = matplotlib.colors.to_rgba("#BAC8A8", 0.9)
     ax.imshow(rgbt, extent=WEXT, zorder=3, interpolation="nearest")
     roads(ax, minor=False, scale=0.9)
     rail(ax, lw=1.1)
@@ -504,7 +504,7 @@ def m_synthese(proposals=False):
         big_forest = ndi.binary_opening(trees, iterations=3)
         edge = big_forest & (bdist < 120) & cm_
         ed = ndi.binary_dilation(edge, iterations=2)
-        r2 = np.zeros(W.shape + (4,)); r2[ed] = matplotlib.colors.to_rgba("#2F5E2A", 0.95)
+        r2 = np.zeros(W.shape + (4,)); r2[ed] = matplotlib.colors.to_rgba("#4F6B4A", 0.95)
         ax.imshow(r2, extent=WEXT, zorder=7)
         for n, lon, lat in [(1, -5.800, 35.795), (2, -5.818, 35.745), (3, -5.875, 35.790), (4, -5.858, 35.741), (5, -5.905, 35.712)]:
             marker(ax, lon, lat, n, color=INK, fs=9)
