@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use std::time::Instant;
 
 use serde::Serialize;
-use sysinfo::{CpuRefreshKind, Disks, MemoryRefreshKind, Networks, RefreshKind, System};
+use sysinfo::{CpuRefreshKind, Disks, MemoryRefreshKind, Networks, ProcessRefreshKind, ProcessesToUpdate, RefreshKind, System, UpdateKind};
 
 #[derive(Serialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]
@@ -26,6 +26,17 @@ pub struct SystemStats {
     pub charging: bool,
     pub uptime_secs: u64,
     pub host: String,
+}
+
+/// One app, all its processes added up (Chrome is dozens of them).
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AppUsage {
+    pub name: String,
+    /// Share of the whole CPU, 0–100.
+    pub cpu: f32,
+    pub memory: u64,
+    pub processes: usize,
 }
 
 pub struct Sampler {
@@ -102,6 +113,50 @@ impl Stats {
             uptime_secs: System::uptime(),
             host: System::host_name().unwrap_or_default(),
         }
+    }
+}
+
+impl Stats {
+    /// The apps using the most CPU (then memory) since the previous call.
+    pub fn top_processes(&self, n: usize) -> Vec<AppUsage> {
+        let mut guard = self.0.lock().unwrap();
+        let s = guard.get_or_insert_with(Sampler::default);
+        s.sys.refresh_processes_specifics(
+            ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing().with_cpu().with_memory().with_exe(UpdateKind::OnlyIfNotSet),
+        );
+        let cores = s.sys.cpus().len().max(1) as f32;
+        let mut by_name: std::collections::HashMap<String, AppUsage> = std::collections::HashMap::new();
+        for p in s.sys.processes().values() {
+            let name = p.name().to_string_lossy().trim_end_matches(".exe").to_string();
+            if name.is_empty() || name == "System Idle Process" || name == "Idle" {
+                continue;
+            }
+            let e = by_name.entry(name.clone()).or_insert(AppUsage { name, cpu: 0.0, memory: 0, processes: 0 });
+            e.cpu += p.cpu_usage() / cores;
+            e.memory += p.memory();
+            e.processes += 1;
+        }
+        let mut apps: Vec<AppUsage> = by_name.into_values().collect();
+        apps.sort_by(|a, b| {
+            b.cpu.partial_cmp(&a.cpu).unwrap_or(std::cmp::Ordering::Equal).then(b.memory.cmp(&a.memory))
+        });
+        apps.truncate(n);
+        apps
+    }
+
+    /// Ends every process with this name. Returns how many were stopped.
+    pub fn kill_app(&self, name: &str) -> usize {
+        let mut guard = self.0.lock().unwrap();
+        let s = guard.get_or_insert_with(Sampler::default);
+        s.sys.refresh_processes(ProcessesToUpdate::All, true);
+        s.sys
+            .processes()
+            .values()
+            .filter(|p| p.name().to_string_lossy().trim_end_matches(".exe").eq_ignore_ascii_case(name))
+            .filter(|p| p.kill())
+            .count()
     }
 }
 

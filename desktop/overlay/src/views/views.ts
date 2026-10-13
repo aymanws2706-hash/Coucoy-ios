@@ -301,7 +301,13 @@ function buildApproval(actions: ViewActions): ViewHost {
     el,
     sync() {
       clear(who);
-      who.append(agentWho(State.focusTask, "needs permission"));
+      const req = State.pendingApproval;
+      if (req?.requestId.startsWith("mochi:")) {
+        // Raised by Mochi's own chat, not by a Claude Code session.
+        who.append(h("div", { class: "who-row" }, h("span", { class: "n", text: "Mochi" }), h("span", { text: `wants to: ${req.tool}` })));
+      } else {
+        who.append(agentWho(State.focusTask, "needs permission"));
+      }
       // The whole point of approving here rather than in the terminal: this line
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.

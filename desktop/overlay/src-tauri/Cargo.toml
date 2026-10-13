@@ -22,6 +22,7 @@ serde_json = { version = "1", features = ["preserve_order"] }
 tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 # Desktop info for the notch and the PC view (personal build).
+tauri-plugin-global-shortcut = "2"
 sysinfo = { version = "0.39", default-features = false, features = ["system", "disk", "network"] }
 
 [target.'cfg(windows)'.dependencies]

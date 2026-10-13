@@ -97,12 +97,27 @@ export const Bridge = {
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
 
+  /** Allow / Deny on a card raised by Mochi's own chat tools. */
+  mochiDecision: (id: number, allow: boolean) => call<void>("mochi_decision", { id, allow }),
+  /** Presses Win+H: Windows voice typing fills the focused field. */
+  startDictation: () => callOrThrow<void>("start_dictation"),
+  topApps: () => call<AppUsage[]>("top_apps"),
+  killApp: (name: string) => call<number>("kill_app", { name }),
+
   /** Desktop info for the notch and the PC view. */
   systemStats: () => call<SystemStats>("system_stats"),
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
 };
+
+export interface AppUsage {
+  name: string;
+  /** Share of the whole CPU, 0–100. */
+  cpu: number;
+  memory: number;
+  processes: number;
+}
 
 export interface SystemStats {
   /** 0–100, all cores. */

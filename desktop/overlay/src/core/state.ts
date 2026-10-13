@@ -139,6 +139,9 @@ class AppState {
 
   integrations: Record<string, IntegrationInfo> = {};
 
+  /** What Mochi's chat is doing right now ("Searching for …"), under the dots. */
+  chatStep: string | null = null;
+
   /** Last desktop sample, refreshed while the island is on screen. */
   stats: SystemStats | null = null;
 

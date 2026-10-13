@@ -1,5 +1,6 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
+mod agent;
 mod claude;
 mod files;
 mod hooks;
@@ -11,6 +12,7 @@ mod platform;
 mod secrets;
 mod settings;
 mod sysstats;
+mod voice;
 mod tray;
 
 use std::process::Command;
@@ -171,6 +173,30 @@ fn quit_app(app: AppHandle) {
     app.exit(0);
 }
 
+/// Allow / Deny on a card Mochi's own chat raised (not a Claude Code one).
+#[tauri::command]
+fn mochi_decision(approvals: State<agent::Approvals>, id: u64, allow: bool) {
+    approvals.decide(id, allow);
+}
+
+/// Presses Win+H so Windows voice typing fills the focused chat field.
+#[tauri::command]
+fn start_dictation() -> Result<(), String> {
+    voice::start_dictation()
+}
+
+/// The apps using the most CPU and memory, for the PC health list.
+#[tauri::command]
+async fn top_apps(stats: State<'_, sysstats::Stats>) -> Result<Vec<sysstats::AppUsage>, String> {
+    Ok(stats.top_processes(6))
+}
+
+/// The ✕ next to an app in the PC health list; the island asks first.
+#[tauri::command]
+async fn kill_app(stats: State<'_, sysstats::Stats>, name: String) -> Result<usize, String> {
+    Ok(stats.kill_app(&name))
+}
+
 /// CPU, memory, disk, network, battery and uptime for the notch and the PC view.
 /// Async so the sampling never runs on the window's thread.
 #[tauri::command]
@@ -244,13 +270,14 @@ fn approval_decline(app: AppHandle, request_id: String) {
 /// One chat turn. The API key and any file bytes stay on the Rust side.
 #[tauri::command]
 async fn chat_send(
+    app: AppHandle,
     shared: State<'_, Shared>,
     chat: State<'_, Chat>,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
     let model = shared.settings.lock().unwrap().model.clone();
-    claude::send(&chat, &model, query, context).await
+    claude::send(&app, &chat, &model, query, context).await
 }
 
 #[tauri::command]
@@ -377,6 +404,16 @@ pub fn run() {
             let _ = app.emit_to(island::WINDOW_LABEL, "tray", "open".to_string());
         }))
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
+        // Personal build: Ctrl+Shift+Space opens the chat from anywhere.
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        let _ = app.emit("hotkey", "chat");
+                    }
+                })
+                .build(),
+        )
         .manage(Shared {
             settings: Mutex::new(loaded.clone()),
             gate: gate.clone(),
@@ -384,6 +421,7 @@ pub fn run() {
         .manage(Pending::default())
         .manage(Chat::default())
         .manage(sysstats::Stats::default())
+        .manage(agent::Approvals::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -412,10 +450,21 @@ pub fn run() {
             open_settings_window,
             set_paused,
             system_stats,
+            mochi_decision,
+            start_dictation,
+            top_apps,
+            kill_app,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
             tray::build(&handle)?;
+            {
+                use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
+                let chat_key = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Space);
+                if let Err(err) = handle.global_shortcut().register(chat_key) {
+                    log::line(&format!("hotkey Ctrl+Shift+Space not available: {err}"));
+                }
+            }
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
 

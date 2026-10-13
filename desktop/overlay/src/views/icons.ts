@@ -2,6 +2,8 @@
 // Drawn on a 24×24 grid so they read at the same optical size.
 
 export const ICONS = {
+  // mic.fill
+  mic: "M12 2.5a3.2 3.2 0 0 0-3.2 3.2v6a3.2 3.2 0 0 0 6.4 0v-6A3.2 3.2 0 0 0 12 2.5zM6.2 10.6a.9.9 0 0 0-1.8 0 7.6 7.6 0 0 0 6.7 7.55V21h1.8v-2.85a7.6 7.6 0 0 0 6.7-7.55.9.9 0 0 0-1.8 0 5.8 5.8 0 0 1-11.6 0z",
   // cpu (stroked) — personal build's "This PC" tab
   chip: "M7 7h10v10H7z M10 10h4v4h-4z M9.5 3.5v3 M14.5 3.5v3 M9.5 17.5v3 M14.5 17.5v3 M3.5 9.5h3 M3.5 14.5h3 M17.5 9.5h3 M17.5 14.5h3",
   // house.fill

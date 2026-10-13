@@ -7,9 +7,13 @@ full copy of Coucou's file with these changes:
 
 | File | Change |
 |---|---|
-| `src-tauri/src/sysstats.rs` | New. CPU, memory, disk C:, network speed, battery, uptime. |
-| `src-tauri/src/lib.rs` | `system_stats` command; settings window re-centres when opened. |
-| `src-tauri/Cargo.toml` | `sysinfo`, and the Windows power API for the battery. |
+| `src-tauri/src/sysstats.rs` | New. CPU, memory, disk C:, network speed, battery, uptime, top apps. |
+| `src-tauri/src/agent.rs` | New. Chat tools: folders, find/read files, PC status, open, write, PowerShell, memory. Open/write/run wait for Allow / Deny. |
+| `src-tauri/src/claude.rs` | Chat is a tool loop (up to 16 rounds) with today's date and memory in the prompt. |
+| `src-tauri/src/voice.rs` | New. Mic button presses Win+H (Windows voice typing). |
+| `src/views/chat.ts`, `src/main.ts` | Progress line, mic / read-aloud / new-chat buttons, Mochi approval cards, Ctrl+Shift+Space. |
+| `src-tauri/src/lib.rs` | New commands, global hotkey plugin; settings window re-centres when opened. |
+| `src-tauri/Cargo.toml` | `sysinfo`, `tauri-plugin-global-shortcut`, the Windows power API. |
 | `src/views/pc.ts`, `pc.css` | New. The "This PC" panel and the notch readout. |
 | `src/views/views.ts`, `icons.ts` | "This PC" tab (chip icon) in the header. |
 | `src/island/island.ts` | Notch shows clock · CPU · battery; stats sampled every 2 s. |

@@ -142,6 +142,15 @@ export class Island {
         void Bridge.log(`decide ${d} req=${req?.requestId ?? "none"}`);
         if (!req) return;
         Sound.play(d === "deny" ? "blip" : "approve");
+        if (req.requestId.startsWith("mochi:")) {
+          // Mochi's own chat asked: answer it and go back to the conversation.
+          void Bridge.mochiDecision(Number(req.requestId.slice(6)), d === "allow");
+          State.pendingApproval = null;
+          State.isPinned = false;
+          this.fsm.pinned = false;
+          this.setView("prompt");
+          return;
+        }
         void Bridge.approvalDecision(req.requestId, d);
         State.pendingApproval = null;
         State.isPinned = false;
@@ -356,6 +365,13 @@ export class Island {
 
   reveal() {
     this.fsm.reveal();
+  }
+
+  /** Ctrl+Shift+Space: open on the chat with the cursor in the field. */
+  openChat() {
+    this.alert("prompt");
+    void Bridge.focusWindow(true);
+    window.setTimeout(() => this.views.get("prompt")?.focus?.(), 120);
   }
 
   /** An alert stopped waiting for an answer: let the island auto-close again. */
