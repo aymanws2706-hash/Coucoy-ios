@@ -7,6 +7,8 @@ export type IslandMode = "hidden" | "compact" | "expanded";
 export type IslandViewName =
   | "today"
   | "pc"
+  | "controls"
+  | "clipboard"
   | "overview"
   | "empty"
   | "approval"
@@ -70,6 +72,8 @@ export const WAKE_STRIP_H = 6;
 
 export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   today: { height: 188, botX: 62, botY: null, botDiameter: 54, agentMode: "none" },
+  controls: { height: 200, botX: 62, botY: null, botDiameter: 50, agentMode: "none" },
+  clipboard: { height: 200, botX: 62, botY: null, botDiameter: 50, agentMode: "none" },
   pc: { height: 188, botX: 62, botY: null, botDiameter: 54, agentMode: "none" },
   overview: { height: 160, botX: 68, botY: null, botDiameter: 58, agentMode: "pills" },
   empty: { height: 160, botX: 70, botY: null, botDiameter: 62, agentMode: "none" },

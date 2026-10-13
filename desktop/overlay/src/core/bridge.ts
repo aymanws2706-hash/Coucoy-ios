@@ -104,6 +104,18 @@ export const Bridge = {
   topApps: () => call<AppUsage[]>("top_apps"),
   killApp: (name: string) => call<number>("kill_app", { name }),
 
+  nowPlaying: () => call<NowPlaying | null>("now_playing"),
+  mediaControl: (action: "toggle" | "next" | "previous") => call<void>("media_control", { action }),
+  deskControls: (brightness: boolean) => call<DeskControls>("desk_controls", { brightness }),
+  setVolume: (percent: number) => call<void>("set_volume", { percent }),
+  setMute: (mic: boolean, muted: boolean) => call<void>("set_mute", { mic, muted }),
+  setBrightness: (percent: number) => callOrThrow<void>("set_brightness", { percent }),
+  deskActivity: () => call<DeskActivity>("desk_activity"),
+  shortcut: (which: string) => callOrThrow<void>("shortcut", { which }),
+  clipboardHistory: () => call<string[]>("clipboard_history"),
+  clipboardCopy: (index: number) => call<void>("clipboard_copy", { index }),
+  clipboardClear: () => call<void>("clipboard_clear"),
+
   weather: (force = false) => callOrThrow<Weather>("weather", { force }),
   calendar: (force = false) => callOrThrow<CalendarEvent[]>("calendar", { force }),
 
@@ -113,6 +125,31 @@ export const Bridge = {
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
 };
+
+export interface NowPlaying {
+  title: string;
+  artist: string;
+  app: string;
+  playing: boolean;
+  /** Seconds. */
+  position: number;
+  duration: number;
+}
+
+export interface DeskControls {
+  volume: number | null;
+  muted: boolean;
+  micMuted: boolean | null;
+  brightness: number | null;
+  wifi: string | null;
+  wifiSignal: number | null;
+}
+
+export interface DeskActivity {
+  micInUse: boolean;
+  cameraInUse: boolean;
+  downloads: { name: string; bytes: number }[];
+}
 
 export interface Weather {
   city: string;

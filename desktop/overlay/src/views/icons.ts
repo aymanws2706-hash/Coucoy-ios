@@ -2,6 +2,15 @@
 // Drawn on a 24×24 grid so they read at the same optical size.
 
 export const ICONS = {
+  // slider.horizontal.3 (stroked) — Controls tab
+  sliders: "M4 6h9 M17 6h3 M15 4v4 M4 12h3 M11 12h9 M9 10v4 M4 18h11 M19 18h1 M17 16v4",
+  // doc.on.clipboard (stroked) — Clipboard tab
+  clipboard: "M9 4h6v3H9z M7 5.5H5.5v15h13v-15H17 M8.5 11h7 M8.5 14.5h7 M8.5 18h4",
+  // play / pause / skip (filled)
+  play: "M8 5.5v13l10.5-6.5z",
+  pause: "M7 5h3.6v14H7zM13.4 5H17v14h-3.6z",
+  next: "M5.5 6v12l8.5-6z M15 6h2.5v12H15z",
+  previous: "M18.5 6v12L10 12z M6.5 6H9v12H6.5z",
   // sun.max (stroked) — personal build's "Today" tab
   sun: "M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6z M12 2.5v2.2 M12 19.3v2.2 M2.5 12h2.2 M19.3 12h2.2 M5.3 5.3l1.6 1.6 M17.1 17.1l1.6 1.6 M5.3 18.7l1.6-1.6 M17.1 6.9l1.6-1.6",
   // mic.fill

@@ -2,7 +2,9 @@
 
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
-import type { AppUsage, CalendarEvent, SystemStats, Weather } from "./bridge";
+import type {
+  AppUsage, CalendarEvent, DeskActivity, DeskControls, NowPlaying, SystemStats, Weather,
+} from "./bridge";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -147,6 +149,17 @@ class AppState {
   weatherError: string | null = null;
   events: CalendarEvent[] = [];
   calendarError: string | null = null;
+
+  /** Controls panel and notch: media, volume, Wi-Fi, mic/camera, downloads. */
+  nowPlaying: NowPlaying | null = null;
+  /** When nowPlaying was read, to move the progress bar between samples. */
+  nowPlayingAt = 0;
+  controls: DeskControls | null = null;
+  activity: DeskActivity | null = null;
+  clipboard: string[] = [];
+
+  /** A countdown in the notch. */
+  timer: { endsAt: number; label: string; minutes: number } | null = null;
 
   /** A PC health warning shown in the notch for a while. */
   alertText: string | null = null;

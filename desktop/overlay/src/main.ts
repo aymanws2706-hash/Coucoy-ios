@@ -66,6 +66,9 @@ async function main() {
     setPaused(false);
     island.openChat();
   });
+  await onEvent<{ minutes: number; label: string }>("timer", ({ minutes, label }) => {
+    island.startTimer(minutes, label);
+  });
   await onEvent<string>("mochi-step", (text) => {
     State.chatStep = text;
     State.notify();

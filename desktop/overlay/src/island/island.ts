@@ -49,6 +49,10 @@ export class Island {
   private wakeStrip!: HTMLElement;
   /** Personal build: clock and stats in the compact notch. */
   private notchInfo!: HTMLElement;
+  private notchText!: HTMLElement;
+  /** Orange / green dots while an app uses the mic / camera, as on a phone. */
+  private notchMic!: HTMLElement;
+  private notchCam!: HTMLElement;
 
   private header!: ViewHost;
   private views!: Map<IslandViewName, ViewHost>;
@@ -178,6 +182,8 @@ export class Island {
         State.notify();
       },
       openSettingsWindow: () => void Bridge.openSettingsWindow(),
+      startTimer: (minutes, label) => this.startTimer(minutes, label),
+      stopTimer: () => this.stopTimer(),
       blip: () => Sound.play("blip"),
     };
 
@@ -187,7 +193,10 @@ export class Island {
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
     this.countdown = h("div", { id: "countdown" });
-    this.notchInfo = h("div", { id: "notch-info" });
+    this.notchText = h("span", { class: "ni-text" });
+    this.notchMic = h("i", { class: "ni-dot mic", title: "An app is using the microphone" });
+    this.notchCam = h("i", { class: "ni-dot cam", title: "An app is using the camera" });
+    this.notchInfo = h("div", { id: "notch-info" }, this.notchMic, this.notchCam, this.notchText);
 
     this.header = buildHeader(actions);
     this.views = buildViews(actions, () => this.animateGeometry(false));
@@ -234,6 +243,43 @@ export class Island {
     this.root.append(this.wakeStrip, this.islandEl);
     this.applyGeometry();
     this.startStats();
+  }
+
+  // ── Timer (personal build) ──────────────────────────────────────────────────
+
+  private timerTick: number | null = null;
+
+  startTimer(minutes: number, label = "") {
+    State.timer = { endsAt: Date.now() + minutes * 60_000, label, minutes };
+    Sound.play("approve");
+    if (this.timerTick != null) window.clearInterval(this.timerTick);
+    // The notch counts down every second while a timer runs.
+    this.timerTick = window.setInterval(() => {
+      const t = State.timer;
+      if (!t) {
+        this.stopTimer();
+        return;
+      }
+      if (Date.now() >= t.endsAt) {
+        this.stopTimer();
+        State.noteMessage = `⏰ Time's up${t.label ? ": " + t.label : ""}`;
+        Sound.play("finish");
+        this.engine.triggerEmote("proud", 3);
+        this.alert("note");
+        window.setTimeout(() => {
+          if (State.view === "note") this.setView(State.defaultView());
+        }, 8000);
+      }
+      State.notify();
+    }, 1000);
+    State.notify();
+  }
+
+  stopTimer() {
+    if (this.timerTick != null) window.clearInterval(this.timerTick);
+    this.timerTick = null;
+    State.timer = null;
+    State.notify();
   }
 
   // ── PC health alerts (personal build) ───────────────────────────────────────
@@ -294,6 +340,19 @@ export class Island {
       if (State.mode === "expanded" && State.view === "pc") {
         const apps = await Bridge.topApps();
         if (apps) State.topApps = apps;
+      }
+      // Media, mic/camera and downloads feed the notch, so they're always read.
+      const [playing, activity] = await Promise.all([Bridge.nowPlaying(), Bridge.deskActivity()]);
+      State.nowPlaying = playing ?? null;
+      State.nowPlayingAt = performance.now();
+      if (activity) State.activity = activity;
+      if (State.mode === "expanded" && State.view === "controls") {
+        const c = await Bridge.deskControls(false);
+        // Brightness is read once when the panel opens (it's slow); keep it.
+        if (c) State.controls = { ...c, brightness: State.controls?.brightness ?? null };
+      }
+      if (State.mode === "expanded" && State.view === "clipboard") {
+        State.clipboard = (await Bridge.clipboardHistory()) ?? [];
       }
       State.notify();
       // The notch is always on screen in this build; slow down only when paused.
@@ -968,6 +1027,18 @@ export class Island {
           State.notify();
         });
       }
+      if (State.view === "controls") {
+        void Bridge.deskControls(true).then((c) => {
+          if (c) State.controls = c;
+          State.notify();
+        });
+      }
+      if (State.view === "clipboard") {
+        void Bridge.clipboardHistory().then((items) => {
+          State.clipboard = items ?? [];
+          State.notify();
+        });
+      }
       if (State.view === "prompt") {
         void Bridge.focusWindow(true);
         window.setTimeout(() => this.views.get("prompt")?.focus?.(), 120);
@@ -981,7 +1052,11 @@ export class Island {
     const compact = State.mode === "compact";
     const badged = State.otherTasks.some((t) => t.pillBadge);
     this.notchInfo.style.opacity = compact && !badged ? "1" : "0";
-    if (compact) this.notchInfo.textContent = notchLine();
+    if (compact) {
+      this.notchText.textContent = notchLine();
+      this.notchMic.style.display = State.activity?.micInUse ? "" : "none";
+      this.notchCam.style.display = State.activity?.cameraInUse ? "" : "none";
+    }
     const showGrid = compact && badged;
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {

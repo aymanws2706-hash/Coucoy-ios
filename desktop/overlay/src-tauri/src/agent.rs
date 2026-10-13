@@ -116,6 +116,22 @@ pub fn definitions() -> Vec<Value> {
             "input_schema": { "type": "object", "properties": {} }
         }),
         json!({
+            "name": "set_timer",
+            "description": "Start a countdown shown in the notch; Mochi rings when it ends. Use for 'remind me in 20 minutes…' or focus sessions.",
+            "input_schema": { "type": "object", "properties": {
+                "minutes": { "type": "number" },
+                "label": { "type": "string", "description": "What it's for, shown in the notch." }
+            }, "required": ["minutes"] }
+        }),
+        json!({
+            "name": "media",
+            "description": "Control or read what's playing (Spotify, YouTube, any app in Windows' media controls), and set the volume.",
+            "input_schema": { "type": "object", "properties": {
+                "action": { "type": "string", "enum": ["status", "toggle", "next", "previous", "volume", "mute", "unmute"] },
+                "volume": { "type": "integer", "description": "0-100, for action volume." }
+            }, "required": ["action"] }
+        }),
+        json!({
             "name": "open",
             "description": "Open a file, folder, app or web address on this PC, like double-clicking it. The user approves first, except for http(s) links.",
             "input_schema": { "type": "object", "properties": {
@@ -188,6 +204,39 @@ pub async fn run(app: &AppHandle, name: &str, input: &Value) -> Result<String, S
         "today" => {
             step(app, "Checking your day");
             Ok(today(app).await)
+        }
+        "set_timer" => {
+            let minutes = input.get("minutes").and_then(Value::as_f64).unwrap_or(0.0);
+            if !(0.05..=24.0 * 60.0).contains(&minutes) {
+                return Err("Give a number of minutes between 0.05 and 1440.".into());
+            }
+            let label = s("label");
+            let _ = app.emit("timer", json!({ "minutes": minutes, "label": label }));
+            Ok(format!("Timer set for {minutes} min{}.", if label.is_empty() { String::new() } else { format!(" ({label})") }))
+        }
+        "media" => {
+            let action = s("action");
+            let volume = input.get("volume").and_then(Value::as_u64).unwrap_or(50).min(100) as u8;
+            tokio::task::spawn_blocking(move || -> Result<String, String> {
+                match action.as_str() {
+                    "status" => Ok(match crate::desk::now_playing() {
+                        Some(p) => format!(
+                            "{} {} by {} in {}",
+                            if p.playing { "Playing" } else { "Paused:" },
+                            p.title,
+                            if p.artist.is_empty() { "?" } else { &p.artist },
+                            p.app
+                        ),
+                        None => "Nothing is playing.".into(),
+                    }),
+                    "volume" => crate::desk::set_volume(volume).map(|_| format!("Volume {volume}%.")),
+                    "mute" => crate::desk::set_mute(false, true).map(|_| "Muted.".into()),
+                    "unmute" => crate::desk::set_mute(false, false).map(|_| "Unmuted.".into()),
+                    other => crate::desk::media(other).map(|_| "Done.".into()),
+                }
+            })
+            .await
+            .map_err(|e| e.to_string())?
         }
         "open" => {
             let target = s("target");

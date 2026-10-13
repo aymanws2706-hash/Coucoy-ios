@@ -13,6 +13,7 @@ import { buildChoose, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
 import { buildPc } from "./pc";
 import { buildToday } from "./today";
+import { buildClipboard, buildControls } from "./controls";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -27,6 +28,8 @@ export interface ViewActions {
   setVolume(v: number): void;
   setAutoClose(seconds: number): void;
   openSettingsWindow(): void;
+  startTimer(minutes: number, label?: string): void;
+  stopTimer(): void;
   blip(): void;
 }
 
@@ -81,6 +84,8 @@ function stack(padLeft: number, padRight: number, ...children: Node[]): HTMLElem
 
 export function buildHeader(actions: ViewActions): ViewHost {
   const tabToday = h("button", { class: "tab", title: "Today", onclick: () => go("today") }, svg(ICONS.sun, 14, { stroke: 1.8 }));
+  const tabControls = h("button", { class: "tab", title: "Controls", onclick: () => go("controls") }, svg(ICONS.sliders, 14, { stroke: 1.8 }));
+  const tabClip = h("button", { class: "tab", title: "Clipboard", onclick: () => go("clipboard") }, svg(ICONS.clipboard, 14, { stroke: 1.7 }));
   const tabPc = h("button", { class: "tab", title: "This PC", onclick: () => go("pc") }, svg(ICONS.chip, 13, { stroke: 2 }));
   const tabHome = h("button", { class: "tab", title: "Overview", onclick: () => go("overview") }, svg(ICONS.house, 13));
   const tabChat = h("button", { class: "tab", title: "Ask", onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
@@ -97,7 +102,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabToday, tabPc, tabHome, tabChat, tabDrop),
+    h("div", { class: "tabs" }, tabToday, tabPc, tabControls, tabClip, tabHome, tabChat, tabDrop),
     h("div", { class: "header-actions" }, gearBtn, soundBtn),
   );
 
@@ -107,6 +112,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
       const v = State.view;
       tabToday.classList.toggle("on", v === "today");
       tabPc.classList.toggle("on", v === "pc");
+      tabControls.classList.toggle("on", v === "controls");
+      tabClip.classList.toggle("on", v === "clipboard");
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
@@ -502,6 +509,8 @@ export function buildViews(
   const map = new Map<IslandViewName, ViewHost>();
   map.set("today", buildToday(actions));
   map.set("pc", buildPc(actions));
+  map.set("controls", buildControls(actions));
+  map.set("clipboard", buildClipboard(actions));
   map.set("overview", buildOverview(actions));
   map.set("empty", buildEmpty(actions));
   map.set("approval", buildApproval(actions));

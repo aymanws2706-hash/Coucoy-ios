@@ -2,7 +2,9 @@
 
 mod agent;
 mod claude;
+mod clip;
 mod day;
+mod desk;
 mod files;
 mod hooks;
 mod integrations;
@@ -184,6 +186,69 @@ async fn weather(day: State<'_, day::Day>, force: bool) -> Result<day::Weather, 
 #[tauri::command]
 async fn calendar(day: State<'_, day::Day>, force: bool) -> Result<Vec<day::Event>, String> {
     day.calendar(force).await
+}
+
+// ── Controls panel (personal build) ─────────────────────────────────────────
+// Every one of these talks to Windows synchronously, so each runs on a
+// blocking thread rather than the window's.
+
+async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn now_playing() -> Result<Option<desk::NowPlaying>, String> {
+    blocking(desk::now_playing).await
+}
+
+#[tauri::command]
+async fn media_control(action: String) -> Result<(), String> {
+    blocking(move || desk::media(&action)).await?
+}
+
+#[tauri::command]
+async fn desk_controls(brightness: bool) -> Result<desk::Controls, String> {
+    blocking(move || desk::controls(brightness)).await
+}
+
+#[tauri::command]
+async fn set_volume(percent: u8) -> Result<(), String> {
+    blocking(move || desk::set_volume(percent)).await?
+}
+
+#[tauri::command]
+async fn set_mute(mic: bool, muted: bool) -> Result<(), String> {
+    blocking(move || desk::set_mute(mic, muted)).await?
+}
+
+#[tauri::command]
+async fn set_brightness(percent: u8) -> Result<(), String> {
+    blocking(move || desk::set_brightness(percent)).await?
+}
+
+#[tauri::command]
+async fn desk_activity() -> Result<desk::Activity, String> {
+    blocking(desk::activity).await
+}
+
+#[tauri::command]
+async fn shortcut(which: String) -> Result<(), String> {
+    blocking(move || desk::shortcut(&which)).await?
+}
+
+#[tauri::command]
+fn clipboard_history(history: State<clip::History>) -> Vec<String> {
+    history.0.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn clipboard_copy(app: AppHandle, index: usize) -> Result<(), String> {
+    clip::copy(&app, index)
+}
+
+#[tauri::command]
+fn clipboard_clear(history: State<clip::History>) {
+    history.0.lock().unwrap().clear();
 }
 
 /// Allow / Deny on a card Mochi's own chat raised (not a Claude Code one).
@@ -417,6 +482,7 @@ pub fn run() {
             let _ = app.emit_to(island::WINDOW_LABEL, "tray", "open".to_string());
         }))
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
+        .plugin(tauri_plugin_clipboard_manager::init())
         // Personal build: Ctrl+Shift+Space opens the chat from anywhere.
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -436,6 +502,7 @@ pub fn run() {
         .manage(sysstats::Stats::default())
         .manage(agent::Approvals::default())
         .manage(day::Day::default())
+        .manage(clip::History::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -470,10 +537,22 @@ pub fn run() {
             kill_app,
             weather,
             calendar,
+            now_playing,
+            media_control,
+            desk_controls,
+            set_volume,
+            set_mute,
+            set_brightness,
+            desk_activity,
+            shortcut,
+            clipboard_history,
+            clipboard_copy,
+            clipboard_clear,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
             tray::build(&handle)?;
+            clip::watch(handle.clone());
             {
                 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
                 let chat_key = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Space);

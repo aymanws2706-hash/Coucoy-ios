@@ -104,10 +104,10 @@
   right: 16px;
   top: 0;
   height: 32px;
-  line-height: 32px;
   max-width: calc(100% - 76px);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font: 500 11.5px var(--font);
   color: #c9ccd2;
   white-space: nowrap;
@@ -383,4 +383,311 @@
 .ap-no {
   background: rgba(255, 255, 255, 0.1);
   color: var(--ink);
+}
+
+/* Controls panel. */
+.ct {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 16px 10px 108px;
+}
+
+.ct-top {
+  display: flex;
+  gap: 18px;
+  min-height: 0;
+}
+
+.np {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.np-title {
+  font: 600 13.5px var(--font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.np-artist {
+  font: 400 11.5px var(--font);
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.np.empty .np-title {
+  color: var(--dim-2);
+  font-weight: 500;
+}
+
+.np-bar {
+  margin-top: 5px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.np-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--ink);
+  border-radius: 2px;
+}
+
+.np-times {
+  display: flex;
+  justify-content: space-between;
+  font: 400 10px var(--font);
+  color: var(--dim-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.np-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.np-btn {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: default;
+}
+
+.np-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.np-btn.big {
+  width: 30px;
+  height: 30px;
+  background: var(--ink);
+  color: #0b0c0e;
+}
+
+.np-btn:active {
+  transform: scale(0.92);
+}
+
+.ct-right {
+  flex: 0 0 210px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ct-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ct-icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: default;
+}
+
+button.ct-icon:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ct-slider {
+  flex: 1 1 auto;
+  min-width: 0;
+  accent-color: var(--ink);
+  height: 4px;
+}
+
+.ct-chip,
+.ct-sc {
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+  font: 500 11px var(--font);
+  white-space: nowrap;
+  cursor: default;
+}
+
+.ct-chip.off {
+  background: rgba(244, 80, 94, 0.22);
+  color: var(--red-text);
+}
+
+.ct-chip:disabled {
+  opacity: 0.5;
+}
+
+.ct-sc:hover,
+.ct-chip:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.ct-sc.armed {
+  background: var(--amber);
+  color: #0b0c0e;
+}
+
+.ct-wifi {
+  font: 400 11px var(--font);
+  color: var(--dim-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ct-shortcuts {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+/* Clipboard panel. */
+.cb {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px 10px 108px;
+}
+
+.cb-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 600 11.5px var(--font);
+  color: var(--dim-2);
+}
+
+.cb-hint {
+  font: 400 10.5px var(--font);
+  color: var(--dim-4);
+  margin-right: auto;
+}
+
+.cb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.cb-item {
+  text-align: left;
+  border: 0;
+  border-radius: 8px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  font: 400 12px var(--font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+  transition: background 0.15s ease-out;
+}
+
+.cb-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.cb-item.copied {
+  background: rgba(52, 211, 153, 0.25);
+}
+
+/* Timer row under the weather on Today. */
+.td-timer {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.td-count {
+  font: 600 12px var(--font);
+  font-variant-numeric: tabular-nums;
+  margin-right: 4px;
+}
+
+.td-count.dim {
+  color: var(--dim-3);
+  font-weight: 400;
+}
+
+.td-chip {
+  border: 0;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+  font: 500 10.5px var(--font);
+  cursor: default;
+}
+
+.td-chip:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.td-chip.stop {
+  background: rgba(244, 80, 94, 0.22);
+  color: var(--red-text);
+}
+
+.ni-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 16px;
+}
+
+.ni-dot {
+  flex: 0 0 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.ni-dot.mic {
+  background: #ff9f0a;
+  box-shadow: 0 0 6px rgba(255, 159, 10, 0.7);
+}
+
+.ni-dot.cam {
+  background: #30d158;
+  box-shadow: 0 0 6px rgba(48, 209, 88, 0.7);
 }

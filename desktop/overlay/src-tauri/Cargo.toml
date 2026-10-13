@@ -23,12 +23,24 @@ tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 # Desktop info for the notch and the PC view (personal build).
 tauri-plugin-global-shortcut = "2"
+tauri-plugin-clipboard-manager = "2"
 sysinfo = { version = "0.39", default-features = false, features = ["system", "disk", "network"] }
 
 [target.'cfg(windows)'.dependencies]
+# Personal build: mic / camera in use, from the registry.
+winreg = "0.55"
 keyring = { version = "3", features = ["windows-native"] }
 windows = { version = "0.61", features = [
+  "Foundation",
+  "Media_Control",
   "Win32_Foundation",
+  "Win32_Media_Audio",
+  "Win32_Media_Audio_Endpoints",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_DataExchange",
+  "Win32_System_Shutdown",
+  "Win32_System_Variant",
   "Win32_Security",
   "Win32_Security_Authorization",
   "Win32_System_Ole",

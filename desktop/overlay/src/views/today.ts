@@ -57,17 +57,19 @@ export function buildToday(actions: ViewActions): ViewHost {
   const date = h("div", { class: "pc-date" });
   const now = h("div", { class: "td-now" });
   const range = h("div", { class: "pc-host" });
+  const timerRow = h("div", { class: "td-timer" });
   const hours = h("div", { class: "td-hours" });
   const events = h("div", { class: "td-events" });
 
   const body = h(
     "div",
     { class: "pc" },
-    h("div", { class: "pc-clock" }, time, date, now, range),
+    h("div", { class: "pc-clock" }, time, date, now, range, timerRow),
     h("div", { class: "td-right" }, hours, events),
   );
 
   let hoursKey = "";
+  let timerKey = "";
   let eventsKey = "";
 
   return {
@@ -84,6 +86,26 @@ export function buildToday(actions: ViewActions): ViewHost {
       } else {
         now.textContent = State.weatherError ? "Weather unavailable" : "Checking the weather…";
         range.textContent = State.weatherError ?? "";
+      }
+
+      // Timer: quick picks, or the countdown with a stop button.
+      const tk = State.timer ? `run:${timerLeft()}` : "idle";
+      if (tk !== timerKey) {
+        timerKey = tk;
+        clear(timerRow);
+        if (State.timer) {
+          const stop = h("button", { class: "td-chip stop", text: "Stop" });
+          stop.addEventListener("click", () => actions.stopTimer());
+          timerRow.append(h("span", { class: "td-count", text: `⏱ ${timerLeft()}` }), stop);
+        } else {
+          timerRow.append(h("span", { class: "td-count dim", text: "⏱" }));
+          for (const m of [5, 15, 25, 50]) {
+            const b = h("button", { class: "td-chip", text: `${m}` });
+            b.title = `${m}-minute timer`;
+            b.addEventListener("click", () => actions.startTimer(m, m === 25 ? "Focus" : ""));
+            timerRow.append(b);
+          }
+        }
       }
 
       const hk = w ? w.hours.map((x) => `${x.hour}:${x.temp}:${x.code}:${x.rain}`).join("|") : "";
@@ -138,15 +160,44 @@ export function buildToday(actions: ViewActions): ViewHost {
 }
 
 /** The compact notch: "14:32 · ☀️ 24° · CPU 12% · ⚡82%", or the next event when it's close. */
+export function timerLeft(): string {
+  const t = State.timer;
+  if (!t) return "";
+  const s = Math.max(0, Math.ceil((t.endsAt - Date.now()) / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = String(s % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
+}
+
+function short(text: string, n: number): string {
+  return text.length > n ? text.slice(0, n - 1) + "…" : text;
+}
+
 export function notchLine(): string {
   const parts = [clock()];
   if (State.alertText) {
     parts.push(`⚠️ ${State.alertText}`);
     return parts.join("  ·  ");
   }
+  if (State.timer) {
+    parts.push(`⏱ ${timerLeft()}${State.timer.label ? " " + short(State.timer.label, 18) : ""}`);
+    return parts.join("  ·  ");
+  }
+  const dl = State.activity?.downloads[0];
+  if (dl) {
+    const mb = dl.bytes / 1024 ** 2;
+    parts.push(`⬇ ${short(dl.name, 20)} ${mb >= 1024 ? (mb / 1024).toFixed(1) + " GB" : Math.round(mb) + " MB"}`);
+    return parts.join("  ·  ");
+  }
   const live = liveEvent();
   if (live) {
     parts.push(`${when(live)}: ${live.title.length > 22 ? live.title.slice(0, 21) + "…" : live.title}`);
+    return parts.join("  ·  ");
+  }
+  const np = State.nowPlaying;
+  if (np?.playing) {
+    parts.push(`♫ ${short(np.title, 22)}${np.artist ? " — " + short(np.artist, 14) : ""}`);
     return parts.join("  ·  ");
   }
   const w = State.weather;
