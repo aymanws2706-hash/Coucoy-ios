@@ -19,6 +19,9 @@ full copy of Coucou's file with these changes:
 | `src-tauri/src/clip.rs` | New. Last 8 copied texts, memory only. |
 | `src/views/controls.ts` | New. Controls and Clipboard panels. |
 | `src-tauri/src/phone.rs` | New. Phone link: web app + JSON API on 127.0.0.1:8771, token auth, shared over HTTPS by `tailscale serve`, pairing QR. |
+| `src-tauri/src/glass.rs`, `src/glass.css` | New. Liquid Glass: acrylic blur behind the island, window cut to the island's shape; translucent layers. Toggle in Settings › General. |
+| `src/mochi/glass.ts`, `engine.ts`, `greeting.ts`, `src/upload/canvas.ts` | The character is a liquid-glass droplet (rippling outline, mood colour pooling inside), drawn the same everywhere. |
+| `src-tauri/icons/putshi-512.png` | New. Droplet icon for the phone home screen. |
 | `src-tauri/src/push.rs` | New. ntfy alerts to the phone, only when the PC has been idle 2 min. |
 | `phone.html`, `src/phone/`, `vite.config.ts` | New. Putshi phone page (chat, approvals, music, timer, today, PC, lock/sleep), built with the rest. |
 | `src/island/hooks.ts` | Claude Code permission / finished also alert the phone. |

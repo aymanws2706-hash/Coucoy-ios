@@ -528,6 +528,12 @@ export class Island {
     this.fsm.reveal();
   }
 
+  /** Re-sends the shape (after the glass blur is switched on or off). */
+  reshape() {
+    this.pushedRect = { x: -1, y: -1, w: -1, h: -1 };
+    this.applyGeometry();
+  }
+
   /** Ctrl+Shift+Space: open on the chat with the cursor in the field. */
   openChat() {
     this.alert("prompt");
@@ -689,7 +695,8 @@ export class Island {
     const p = this.pushedRect;
     if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
       this.pushedRect = rect;
-      void Bridge.setIslandRect(rect.x, rect.y, rect.w, rect.h);
+      // The radius rides along so the glass window takes the island's shape.
+      void Bridge.setIslandRect(rect.x, rect.y, rect.w, rect.h, r);
     }
   }
 

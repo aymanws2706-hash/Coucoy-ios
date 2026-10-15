@@ -354,7 +354,7 @@ function phoneSection(hasTopic: boolean): HTMLElement {
     dot.style.background = info?.enabled && info.url ? "#22c55e" : "#f4505e";
 
     body.append(h("div", { class: "hint", text:
-      "Putshi on your iPhone: chat with Mochi, approve what it does, control music, timers and the PC. " +
+      "Putshi on your iPhone: chat with Putshi, approve what it does, control music, timers and the PC. " +
       "It goes through Tailscale, so only your own devices can reach it." }));
 
     if (info?.message) body.append(h("div", { class: "notice err", text: info.message }));
@@ -421,7 +421,7 @@ function phoneSection(hasTopic: boolean): HTMLElement {
     body.append(
       h("div", { class: "hint", style: "margin-top:6px", text:
         "Lock-screen alerts: install “ntfy” from the App Store, tap + and subscribe to a topic name only you know " +
-        "(like putshi-7f3k9q). Put the same name here. Alerts come when Mochi needs an OK, a timer ends, or Claude Code " +
+        "(like putshi-7f3k9q). Put the same name here. Alerts come when Putshi needs an OK, a timer ends, or Claude Code " +
         "finishes, and only while nobody is using the PC." }),
       storedField("ntfy-topic", "ntfy topic", "putshi-" + Math.random().toString(36).slice(2, 8), false, hasTopic,
         (p) => (p ? "Alerts go to your topic." : "No alerts yet.")),
@@ -477,7 +477,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
   function updateNote() {
     const used = settings.activeIntegrations.length;
-    note.textContent = `Pick up to ${MAX_ACTIVE} pills to show next to Mochi — ${used}/${MAX_ACTIVE} in use. Keys are stored in the Windows Credential Manager, never on disk.`;
+    note.textContent = `Pick up to ${MAX_ACTIVE} pills to show next to Putshi — ${used}/${MAX_ACTIVE} in use. Keys are stored in the Windows Credential Manager, never on disk.`;
   }
 
   for (const def of INTEGRATIONS) {
@@ -545,6 +545,14 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
 // ── General section ───────────────────────────────────────────────────────────
 
+function glassOn(): boolean {
+  try {
+    return localStorage.getItem("putshi.glass") !== "0";
+  } catch {
+    return true;
+  }
+}
+
 function generalSection(): HTMLElement {
   const volume = h("input", {
     type: "range", min: "0", max: "0.2", step: "0.005",
@@ -598,6 +606,18 @@ function generalSection(): HTMLElement {
     h("div", { class: "row" },
       h("label", { text: "Launch at startup" }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Liquid Glass blur" }),
+      toggle(glassOn(), (v) => {
+        try {
+          localStorage.setItem("putshi.glass", v ? "1" : "0");
+        } catch {
+          /* storage blocked: the choice won't stick */
+        }
+        void emitEvent("glass-changed");
+      }),
+      h("span", { class: "hint", text: "blurs what's behind the island; turn off if it looks wrong" }),
     ),
   );
 }

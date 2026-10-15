@@ -348,7 +348,7 @@ fn state(app: &AppHandle) -> Value {
 
 fn serve_static(app: &AppHandle, req: Request, path: &str) {
     if path == "/icon.png" {
-        let resp = Response::from_data(include_bytes!("../icons/128x128@2x.png").to_vec())
+        let resp = Response::from_data(include_bytes!("../icons/putshi-512.png").to_vec())
             .with_header(header("Content-Type", "image/png"));
         let _ = req.respond(resp);
         return;

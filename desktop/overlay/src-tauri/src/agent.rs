@@ -61,7 +61,7 @@ async fn ask(app: &AppHandle, what: &str, detail: &str) -> bool {
     let (tx, rx) = oneshot::channel();
     approvals.waiting.lock().unwrap().insert(id, (tx, what.to_string(), detail.to_string()));
     let _ = app.emit("mochi-approval", json!({ "id": id, "what": what, "detail": detail }));
-    crate::push::send(app, "Mochi needs your OK", &format!("{what}: {detail}"));
+    crate::push::send(app, "Putshi needs your OK", &format!("{what}: {detail}"));
     let allowed = matches!(tokio::time::timeout(APPROVAL_TIMEOUT, rx).await, Ok(Ok(true)));
     approvals.waiting.lock().unwrap().remove(&id);
     let _ = app.emit("mochi-approval-done", id);
@@ -131,7 +131,7 @@ pub fn definitions() -> Vec<Value> {
         }),
         json!({
             "name": "set_timer",
-            "description": "Start a countdown shown in the notch; Mochi rings when it ends. Use for 'remind me in 20 minutes…' or focus sessions.",
+            "description": "Start a countdown shown in the notch; Putshi rings when it ends. Use for 'remind me in 20 minutes…' or focus sessions.",
             "input_schema": { "type": "object", "properties": {
                 "minutes": { "type": "number" },
                 "label": { "type": "string", "description": "What it's for, shown in the notch." }

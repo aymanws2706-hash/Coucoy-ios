@@ -7,6 +7,7 @@ import { State, type Settings } from "./core/state";
 import { Island } from "./island/island";
 import { registerHookHandlers } from "./island/hooks";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
+import "./glass.css";
 
 async function main() {
   const root = document.getElementById("root");
@@ -60,6 +61,23 @@ async function main() {
     State.loadIntegrationTasks();
     void refreshConfigured();
   });
+
+  // ── Personal build: Liquid Glass ────────────────────────────────────────
+  const applyGlass = async () => {
+    let want = true;
+    try {
+      want = localStorage.getItem("putshi.glass") !== "0";
+    } catch {
+      /* storage blocked: keep the default */
+    }
+    // Outside the app (browser preview) there is no window to blur: show glass.
+    const took = IS_TAURI ? ((await Bridge.setGlass(want)) ?? false) : want;
+    document.documentElement.classList.toggle("glass", want && took);
+    document.documentElement.classList.toggle("no-glass", !(want && took));
+    island.reshape();
+  };
+  await applyGlass();
+  await onEvent<null>("glass-changed", () => void applyGlass());
 
   // ── Personal build: Mochi's assistant ───────────────────────────────────
   await onEvent<string>("hotkey", () => {

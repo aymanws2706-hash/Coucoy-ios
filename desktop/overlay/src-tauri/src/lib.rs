@@ -4,6 +4,7 @@ mod agent;
 mod claude;
 mod clip;
 mod day;
+mod glass;
 mod phone;
 mod push;
 mod desk;
@@ -108,8 +109,20 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
 
 /// The front end pushes the island shape; Rust decides click-through from it.
 #[tauri::command]
-fn set_island_rect(app: AppHandle, shared: State<Shared>, x: f64, y: f64, width: f64, height: f64) {
+fn set_island_rect(
+    app: AppHandle,
+    shared: State<Shared>,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    radius: Option<f64>,
+) {
     shared.gate.set_rect(island::IslandRect { x, y, w: width, h: height });
+    // Personal build: the glass window follows the island's shape.
+    if let Some(win) = island::window(&app) {
+        glass::shape(&win, x, y, width, height, radius.unwrap_or(14.0));
+    }
     // Without the cursor poll the input region is the click-through: it follows the island.
     if !platform::CURSOR_POLL {
         island::refresh_click_through(&app, &shared.gate);
@@ -285,6 +298,12 @@ fn push_notify(app: AppHandle, title: String, message: String, now: Option<bool>
     } else {
         push::send(&app, &title, &message);
     }
+}
+
+/// Liquid Glass blur behind the island (Windows acrylic). Returns whether it took.
+#[tauri::command]
+fn set_glass(app: AppHandle, on: bool) -> bool {
+    island::window(&app).map(|w| glass::set_enabled(&w, on)).unwrap_or(false)
 }
 
 /// Allow / Deny on a card Mochi's own chat raised (not a Claude Code one).
@@ -590,6 +609,7 @@ pub fn run() {
             phone_disable,
             phone_publish,
             push_notify,
+            set_glass,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

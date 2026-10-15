@@ -314,7 +314,7 @@ function buildApproval(actions: ViewActions): ViewHost {
       const req = State.pendingApproval;
       if (req?.requestId.startsWith("mochi:")) {
         // Raised by Mochi's own chat, not by a Claude Code session.
-        who.append(h("div", { class: "who-row" }, h("span", { class: "n", text: "Mochi" }), h("span", { text: `wants to: ${req.tool}` })));
+        who.append(h("div", { class: "who-row" }, h("span", { class: "n", text: "Putshi" }), h("span", { text: `wants to: ${req.tool}` })));
       } else {
         who.append(agentWho(State.focusTask, "needs permission"));
       }

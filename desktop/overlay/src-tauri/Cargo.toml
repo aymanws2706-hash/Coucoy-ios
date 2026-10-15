@@ -26,6 +26,8 @@ tauri-plugin-global-shortcut = "2"
 tauri-plugin-clipboard-manager = "2"
 # Phone link: a tiny local web server, its token and the pairing QR code.
 tiny_http = "0.12"
+# Liquid Glass: acrylic blur behind the island.
+window-vibrancy = "0.8"
 getrandom = "0.3"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 sysinfo = { version = "0.39", default-features = false, features = ["system", "disk", "network"] }
@@ -38,6 +40,7 @@ windows = { version = "0.61", features = [
   "Foundation",
   "Media_Control",
   "Win32_Foundation",
+  "Win32_Graphics_Gdi",
   "Win32_Media_Audio",
   "Win32_Media_Audio_Endpoints",
   "Win32_System_Com",

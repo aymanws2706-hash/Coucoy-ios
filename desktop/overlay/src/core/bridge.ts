@@ -42,8 +42,10 @@ export const Bridge = {
    * Pushes the island shape in window coordinates. Rust flips click-through from
    * its own cursor poll, so the flag is never a frame behind a click.
    */
-  setIslandRect: (x: number, y: number, width: number, height: number) =>
-    call<void>("set_island_rect", { x, y, width, height }),
+  setIslandRect: (x: number, y: number, width: number, height: number, radius = 14) =>
+    call<void>("set_island_rect", { x, y, width, height, radius }),
+  /** Liquid Glass blur behind the island; false when Windows refused it. */
+  setGlass: (on: boolean) => call<boolean>("set_glass", { on }),
 
   /** Give the window keyboard focus (chat field) and take it away again. */
   focusWindow: (focused: boolean) => call<void>("focus_window", { focused }),

@@ -192,7 +192,7 @@ function renderApprovals() {
   approvalsBox.replaceChildren();
   for (const a of list) {
     const card = el("div", "card ask");
-    card.append(el("div", "ask-who", `Mochi wants to: ${a.what}`), el("code", "ask-code", a.detail));
+    card.append(el("div", "ask-who", `Putshi wants to: ${a.what}`), el("code", "ask-code", a.detail));
     const row = el("div", "row");
     row.append(
       button("Deny", "btn ghost", () => void decide(card, () => api("approve", { id: a.id, allow: false }))),
@@ -229,7 +229,7 @@ async function decide(card: HTMLElement, call: () => Promise<unknown>) {
 const log = el("div", "log");
 const form = el("form", "ask-bar");
 const input = el("input", "input") as HTMLInputElement;
-input.placeholder = "Ask Mochi… (it works on your PC)";
+input.placeholder = "Ask Putshi… (it works on your PC)";
 input.enterKeyHint = "send";
 const sendBtn = el("button", "send", "↑");
 sendBtn.type = "submit";
@@ -241,7 +241,7 @@ const reset = button("New", "mini", () => {
 });
 form.append(input, sendBtn);
 const chatHead = el("div", "card-head");
-chatHead.append(el("span", "", "Mochi"), reset);
+chatHead.append(el("span", "", "Chat"), reset);
 chatCard.append(chatHead, log, form);
 
 function renderChat() {
