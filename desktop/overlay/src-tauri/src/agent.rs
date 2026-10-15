@@ -61,8 +61,16 @@ async fn ask(app: &AppHandle, what: &str, detail: &str) -> bool {
     let (tx, rx) = oneshot::channel();
     approvals.waiting.lock().unwrap().insert(id, (tx, what.to_string(), detail.to_string()));
     let _ = app.emit("mochi-approval", json!({ "id": id, "what": what, "detail": detail }));
-    crate::push::send(app, "Putshi needs your OK", &format!("{what}: {detail}"));
-    let allowed = matches!(tokio::time::timeout(APPROVAL_TIMEOUT, rx).await, Ok(Ok(true)));
+    // A task from the phone runs while the user is away: give them time to
+    // answer from the phone (the alert goes out right away).
+    let unattended = crate::jobs::UNATTENDED.load(Ordering::Relaxed);
+    let wait = if unattended { Duration::from_secs(30 * 60) } else { APPROVAL_TIMEOUT };
+    if unattended {
+        crate::push::send_now(app, "Putshi needs your OK", &format!("{what}: {detail}"));
+    } else {
+        crate::push::send(app, "Putshi needs your OK", &format!("{what}: {detail}"));
+    }
+    let allowed = matches!(tokio::time::timeout(wait, rx).await, Ok(Ok(true)));
     approvals.waiting.lock().unwrap().remove(&id);
     let _ = app.emit("mochi-approval-done", id);
     allowed
@@ -128,6 +136,22 @@ pub fn definitions() -> Vec<Value> {
             "name": "today",
             "description": "The weather where the user is (now, next hours, high/low) and their calendar for the next 7 days.",
             "input_schema": { "type": "object", "properties": {} }
+        }),
+        json!({
+            "name": "remind_me",
+            "description": "Remind the user of something at a time: call someone back, text someone, take something, leave. It shows in the notch on the PC and as a phone alert at that time (the phone alert works even if the PC is off then; up to 3 days ahead).",
+            "input_schema": { "type": "object", "properties": {
+                "what": { "type": "string", "description": "The reminder, written to the user: 'Call Karim back about the villa plans'." },
+                "when": { "type": "string", "description": "Local date-time, like 2026-10-16T18:30. Work it out from 'in 2 hours' or 'tonight' using the current time." }
+            }, "required": ["what", "when"] }
+        }),
+        json!({
+            "name": "schedule_task",
+            "description": "Do something on this PC later, at a set time (open an app, clean a folder, run a command…). The task runs with the same tools and approval rules.",
+            "input_schema": { "type": "object", "properties": {
+                "instruction": { "type": "string" },
+                "when": { "type": "string", "description": "Local date-time, like 2026-10-16T09:00." }
+            }, "required": ["instruction", "when"] }
         }),
         json!({
             "name": "set_timer",
@@ -219,6 +243,22 @@ pub async fn run(app: &AppHandle, name: &str, input: &Value) -> Result<String, S
             step(app, "Checking your day");
             Ok(today(app).await)
         }
+        "remind_me" => {
+            let what = s("what");
+            let at = local_to_epoch_ms(&s("when")).ok_or("Give the time as 2026-10-16T18:30.")?;
+            if what.trim().is_empty() {
+                return Err("What should I remind you of?".into());
+            }
+            let _ = app.emit("reminder", json!({ "at": at, "text": what }));
+            crate::push::send_at(app, "⏰ Reminder", &what, at / 1000);
+            Ok(format!("Reminder set for {}.", crate::day::local_label(at)))
+        }
+        "schedule_task" => {
+            let at = local_to_epoch_ms(&s("when")).ok_or("Give the time as 2026-10-16T09:00.")?;
+            let jobs = app.state::<crate::jobs::Jobs>();
+            jobs.add_local(&s("instruction"), at)?;
+            Ok(format!("Scheduled for {}.", crate::day::local_label(at)))
+        }
         "set_timer" => {
             let minutes = input.get("minutes").and_then(Value::as_f64).unwrap_or(0.0);
             if !(0.05..=24.0 * 60.0).contains(&minutes) {
@@ -309,6 +349,11 @@ pub async fn run(app: &AppHandle, name: &str, input: &Value) -> Result<String, S
         }
         other => Err(format!("Unknown tool {other}")),
     }
+}
+
+/// "2026-10-16T18:30" (local) → epoch ms.
+fn local_to_epoch_ms(text: &str) -> Option<i64> {
+    crate::day::local_to_epoch_ms(text.trim())
 }
 
 /// `~` → the home folder; forward slashes are fine on Windows too.

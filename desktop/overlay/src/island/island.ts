@@ -274,6 +274,48 @@ export class Island {
 
   private decide: (d: "allow" | "deny") => void = () => {};
 
+  // ── Reminders (personal build) ──────────────────────────────────────────────
+
+  private reminders: { at: number; text: string }[] = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("putshi.reminders") ?? "[]");
+    } catch {
+      return [];
+    }
+  })();
+
+  addReminder(at: number, text: string) {
+    this.reminders.push({ at, text });
+    this.saveReminders();
+  }
+
+  private saveReminders() {
+    try {
+      localStorage.setItem("putshi.reminders", JSON.stringify(this.reminders));
+    } catch {
+      /* storage blocked: reminders last until the app closes */
+    }
+  }
+
+  /** Called with every stats sample (2 s): rings the reminders that are due. */
+  private checkReminders() {
+    const now = Date.now();
+    const due = this.reminders.filter((r) => r.at <= now);
+    if (!due.length) return;
+    this.reminders = this.reminders.filter((r) => r.at > now);
+    this.saveReminders();
+    // A reminder more than an hour late (PC was off) is still shown, marked late.
+    const r = due[due.length - 1];
+    const late = now - r.at > 3_600_000 ? " (missed while the PC was off)" : "";
+    State.noteMessage = `⏰ ${r.text}${late}`;
+    Sound.play("approval");
+    this.engine.triggerEmote("surprised", 2.5);
+    this.alert("note");
+    window.setTimeout(() => {
+      if (State.view === "note") this.setView(State.defaultView());
+    }, 15_000);
+  }
+
   // ── Timer (personal build) ──────────────────────────────────────────────────
 
   private timerTick: number | null = null;
@@ -367,6 +409,7 @@ export class Island {
         State.stats = s;
         this.checkHealth(s);
       }
+      this.checkReminders();
       // The per-app list costs more to read: only while it's on screen.
       if (State.mode === "expanded" && State.view === "pc") {
         const apps = await Bridge.topApps();

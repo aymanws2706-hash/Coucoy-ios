@@ -274,6 +274,37 @@ fn handle(app: &AppHandle, mut req: Request) {
                 Err(err) => reply_error(req, 502, &err),
             }
         }
+        (Method::Get, "/api/offline-config") => {
+            // What the phone needs to keep going when the PC is off: the key
+            // to talk to Claude itself, the model, what Putshi remembers, and
+            // where to leave tasks for the PC.
+            let model = app.state::<crate::Shared>().settings.lock().unwrap().model.clone();
+            let alerts_topic = secrets::get("ntfy-topic").map(|t| t.trim().to_string());
+            let jobs_topic = alerts_topic.as_ref().map(|t| format!("{t}-jobs"));
+            reply_json(req, 200, &json!({
+                "apiKey": secrets::get("anthropic-api-key"),
+                "model": model,
+                "memory": agent::memory(),
+                "jobsTopic": jobs_topic,
+                "alertsTopic": alerts_topic,
+                "host": sysstats_host(app),
+            }))
+        }
+        (Method::Get, "/api/jobs") => {
+            let list = app.state::<crate::jobs::Jobs>().list();
+            reply_json(req, 200, &json!(list))
+        }
+        (Method::Post, "/api/jobs") => {
+            let run_at = input.get("runAt").and_then(Value::as_i64);
+            let jobs = app.state::<crate::jobs::Jobs>();
+            match jobs.add(&s("id"), &s("instruction"), run_at, &s("sig")) {
+                Ok(_) => {
+                    let _ = app.emit("jobs-changed", ());
+                    reply_json(req, 200, &json!({}))
+                }
+                Err(err) => reply_error(req, 400, &err),
+            }
+        }
         (Method::Post, "/api/chat/reset") => {
             app.state::<Phone>().chat.reset();
             reply_json(req, 200, &json!({}))
@@ -319,6 +350,10 @@ fn handle(app: &AppHandle, mut req: Request) {
         }
         _ => reply_error(req, 404, "Unknown request."),
     }
+}
+
+fn sysstats_host(app: &AppHandle) -> String {
+    app.state::<sysstats::Stats>().sample().host
 }
 
 fn respond_result(req: Request, result: Result<(), String>) {

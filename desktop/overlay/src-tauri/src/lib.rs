@@ -5,6 +5,7 @@ mod claude;
 mod clip;
 mod day;
 mod glass;
+mod jobs;
 mod phone;
 mod push;
 mod desk;
@@ -559,6 +560,7 @@ pub fn run() {
         .manage(day::Day::default())
         .manage(clip::History::default())
         .manage(phone::Phone::default())
+        .manage(jobs::Jobs::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -615,6 +617,8 @@ pub fn run() {
             let handle = app.handle().clone();
             tray::build(&handle)?;
             clip::watch(handle.clone());
+            // Tasks left from the phone: watch for new ones, run them when due.
+            jobs::start(handle.clone());
             // The phone link comes back on by itself once it has been paired.
             if phone::token().is_some() {
                 phone::start(handle.clone());

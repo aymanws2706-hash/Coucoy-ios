@@ -23,6 +23,9 @@ full copy of Coucou's file with these changes:
 | `src/mochi/glass.ts`, `engine.ts`, `greeting.ts`, `src/upload/canvas.ts` | The character is a liquid-glass droplet (rippling outline, mood colour pooling inside), drawn the same everywhere. |
 | `src-tauri/icons/*` | Droplet icons: app/installer tile, an opaque droplet for tray sizes, and `putshi-512.png` for the phone. |
 | `src-tauri/tauri.conf.json`, `tray.rs`, `index.html`, `settings.html`, `scripts/pack.mjs` | Named Putshi (data folders and keys keep Coucou's names, so nothing is lost). |
+| `src-tauri/src/jobs.rs` | New. Tasks for the PC: from the phone (signed with the pairing token, via the phone link or the private ntfy topic "<topic>-jobs") or scheduled by the assistant; run when due, results pushed to the phone. |
+| `public/sw.js`, `src/phone/offline.ts` | Phone offline mode: the page is kept on the phone; with the PC off it chats with Claude directly, queues tasks for the PC, and sets reminders through ntfy. |
+| Reminders | `remind_me` on PC and phone: notch at the time plus a scheduled ntfy alert (works with the PC off, up to 3 days ahead). |
 | `src-tauri/src/push.rs` | New. ntfy alerts to the phone, only when the PC has been idle 2 min. |
 | `phone.html`, `src/phone/`, `vite.config.ts` | New. Putshi phone page (chat, approvals, music, timer, today, PC, lock/sleep), built with the rest. |
 | `src/island/hooks.ts` | Claude Code permission / finished also alert the phone. |

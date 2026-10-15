@@ -535,3 +535,30 @@ body::before {
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.14);
 }
+
+/* Offline mode and tasks for the PC. */
+.offline {
+  border-color: rgba(255, 169, 77, 0.45);
+  background: linear-gradient(180deg, rgba(255, 169, 77, 0.2), rgba(255, 255, 255, 0.05));
+}
+
+.job {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.job-what {
+  font-weight: 500;
+}
+
+.job-result {
+  color: var(--ink);
+  opacity: 0.85;
+}
+
+[hidden] {
+  display: none !important;
+}

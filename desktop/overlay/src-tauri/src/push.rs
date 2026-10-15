@@ -36,6 +36,28 @@ pub fn send(app: &AppHandle, title: &str, message: &str) {
     }
 }
 
+/// An alert ntfy holds and delivers at `at_secs` (Unix time), even if the PC
+/// is off by then. ntfy keeps scheduled messages up to 3 days ahead.
+pub fn send_at(app: &AppHandle, title: &str, message: &str, at_secs: i64) {
+    let Some(topic) = secrets::get("ntfy-topic") else { return };
+    let mut body = json!({
+        "topic": topic.trim(),
+        "title": title,
+        "message": message.chars().take(400).collect::<String>(),
+        "tags": ["alarm_clock"],
+        "delay": at_secs.to_string(),
+    });
+    if let Some(url) = crate::phone::public_url(app) {
+        body["click"] = json!(url);
+    }
+    tauri::async_runtime::spawn(async move {
+        let Ok(client) = reqwest::Client::builder().timeout(Duration::from_secs(10)).build() else { return };
+        if let Err(err) = client.post("https://ntfy.sh/").json(&body).send().await {
+            crate::log::line(format!("ntfy: {err}"));
+        }
+    });
+}
+
 /// Fire and forget: a failed alert never holds anything up.
 pub fn send_now(app: &AppHandle, title: &str, message: &str) {
     let Some(topic) = secrets::get("ntfy-topic") else { return };

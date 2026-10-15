@@ -90,6 +90,7 @@ async function main() {
     island.startTimer(minutes, label);
   });
   await onEvent<null>("timer-stop", () => island.stopTimer());
+  await onEvent<{ at: number; text: string }>("reminder", ({ at, text }) => island.addReminder(at, text));
   await onEvent<"allow" | "deny">("phone-claude", (d) => island.decideFromPhone(d));
   await onEvent<string>("mochi-step", (text) => {
     State.chatStep = text;

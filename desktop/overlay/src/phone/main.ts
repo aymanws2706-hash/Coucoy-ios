@@ -8,6 +8,7 @@ import { BotEngine } from "../mochi/engine";
 import { weatherIcon, when } from "../views/today";
 import type { BotStateName } from "../core/layout";
 import type { CalendarEvent, DeskActivity, DeskControls, NowPlaying, SystemStats, Weather } from "../core/bridge";
+import { directChat, loadJobs, saveConfig, saveJobs, type DirectMsg, type OfflineConfig, type PhoneJob } from "./offline";
 
 // ── Pairing ───────────────────────────────────────────────────────────────────
 
@@ -29,11 +30,15 @@ function readToken(): string | null {
 const token = readToken();
 
 async function api<T>(path: string, body?: unknown): Promise<T> {
+  // Give up quickly when the PC is off; a chat turn may take a while.
+  const ctrl = new AbortController();
+  const timer = window.setTimeout(() => ctrl.abort(), path === "chat" ? 180_000 : 7000);
   const res = await fetch(`/api/${path}`, {
     method: body === undefined ? "GET" : "POST",
     headers: { Authorization: `Bearer ${token ?? ""}`, "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
-  });
+    signal: ctrl.signal,
+  }).finally(() => window.clearTimeout(timer));
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error((data as { error?: string }).error ?? `Error ${res.status}`);
   return data as T;
@@ -77,6 +82,9 @@ try {
   chat = [];
 }
 let sending = false;
+/** The phone's own conversation with Claude while the PC is off. */
+const direct: DirectMsg[] = [];
+let configAt = 0;
 
 function saveChat() {
   try {
@@ -139,7 +147,9 @@ const todayCard = el("section", "card today");
 const pcCard = el("section", "card pcinfo");
 const actionsCard = el("section", "card actions");
 
-app.append(top, approvalsBox, chatCard, playCard, timerCard, todayCard, pcCard, actionsCard);
+const offlineBox = el("section", "card offline");
+const jobsCard = el("section", "card jobs");
+app.append(top, offlineBox, approvalsBox, chatCard, jobsCard, playCard, timerCard, todayCard, pcCard, actionsCard);
 
 // ── Mochi ─────────────────────────────────────────────────────────────────────
 
@@ -229,7 +239,7 @@ async function decide(card: HTMLElement, call: () => Promise<unknown>) {
 const log = el("div", "log");
 const form = el("form", "ask-bar");
 const input = el("input", "input") as HTMLInputElement;
-input.placeholder = "Ask Putshi… (it works on your PC)";
+input.placeholder = "Ask Putshi…";
 input.enterKeyHint = "send";
 const sendBtn = el("button", "send", "↑");
 sendBtn.type = "submit";
@@ -268,8 +278,14 @@ form.addEventListener("submit", async (e) => {
   sending = true;
   renderChat();
   try {
-    const r = await api<{ text: string }>("chat", { text });
-    chat.push({ role: "assistant", text: r.text });
+    if (online) {
+      const r = await api<{ text: string }>("chat", { text });
+      chat.push({ role: "assistant", text: r.text });
+    } else {
+      // PC off: Claude straight from the phone; PC work becomes tasks.
+      const reply = await directChat(token ?? "", direct, text, () => renderJobs());
+      chat.push({ role: "assistant", text: reply });
+    }
     engine.triggerEmote("happy");
   } catch (err) {
     chat.push({ role: "error", text: String(err).replace(/^Error:\s*/, "") });
@@ -459,6 +475,7 @@ function tickLive() {
 }
 
 function render() {
+  renderOffline();
   hostEl.textContent = online ? `Connected to ${st?.host || "your PC"}` : lastError || "Connecting…";
   hostEl.classList.toggle("off", !online);
   engine.setState(mochiState());
@@ -469,6 +486,83 @@ function render() {
   renderPc();
 }
 
+/** While the PC is reachable: learn how to go offline, and hand over tasks. */
+async function syncWithPc() {
+  if (Date.now() - configAt > 5 * 60_000) {
+    try {
+      saveConfig(await api<OfflineConfig>("offline-config"));
+      configAt = Date.now();
+    } catch {
+      /* next time */
+    }
+  }
+  const jobs = loadJobs();
+  for (const j of jobs.filter((x) => !x.delivered)) {
+    try {
+      await api("jobs", { id: j.id, instruction: j.instruction, runAt: j.runAt, sig: j.sig });
+      j.delivered = true;
+    } catch {
+      /* keep it for next time */
+    }
+  }
+  try {
+    const remote = await api<{ id: string; status: string; result: string }[]>("jobs");
+    for (const j of jobs) {
+      const r = remote.find((x) => x.id === j.id);
+      if (r) {
+        j.delivered = true;
+        j.status = r.status;
+        j.result = r.result;
+      }
+    }
+  } catch {
+    /* statuses update next time */
+  }
+  saveJobs(jobs);
+  renderJobs();
+}
+
+// ── Tasks for the PC ──────────────────────────────────────────────────────────
+
+const STATUS: Record<string, string> = {
+  pending: "Waiting to run",
+  running: "Running now…",
+  done: "Done",
+  failed: "Couldn't finish",
+};
+
+function renderJobs() {
+  const jobs = loadJobs().sort((a, b) => b.created - a.created).slice(0, 5);
+  jobsCard.replaceChildren();
+  jobsCard.hidden = jobs.length === 0;
+  if (!jobs.length) return;
+  const head = el("div", "card-head");
+  head.append(el("span", "", "Tasks for your PC"));
+  const clearDone = button("Clear done", "mini", () => {
+    saveJobs(loadJobs().filter((j) => j.status !== "done" && j.status !== "failed"));
+    renderJobs();
+  });
+  head.append(clearDone);
+  jobsCard.append(head);
+  for (const j of jobs as PhoneJob[]) {
+    const row = el("div", "job");
+    const when = j.runAt ? new Date(j.runAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }) : "When the PC is on";
+    const status = STATUS[j.status ?? ""] ?? (j.posted ? "Sent, waiting for the PC" : "On the phone, will send when the PC is back");
+    row.append(el("div", "job-what", j.instruction), el("div", "small", `${when} · ${status}`));
+    if (j.result) row.append(el("div", "small job-result", j.result));
+    jobsCard.append(row);
+  }
+}
+
+function renderOffline() {
+  offlineBox.hidden = online || !token;
+  offlineBox.replaceChildren(
+    el("div", "big", "Your PC is offline"),
+    el("div", "dim small", "You're chatting with Claude straight from the phone. Ask for anything that needs the PC and it'll be done when the PC is back on, or at the time you say."),
+  );
+  for (const c of [playCard, timerCard, todayCard, pcCard, actionsCard]) c.hidden = !online;
+}
+
 async function refresh() {
   if (!token) return;
   try {
@@ -476,6 +570,7 @@ async function refresh() {
     readAt = performance.now();
     online = true;
     lastError = "";
+    void syncWithPc();
   } catch (err) {
     online = false;
     lastError = String(err).replace(/^Error:\s*/, "").replace(/^TypeError:.*/, "Can't reach the PC. Is it on, with Tailscale connected?");
@@ -495,7 +590,9 @@ if (!token) {
   hostEl.textContent = "";
   engine.setState("sleeping");
 } else {
+  if ("serviceWorker" in navigator) void navigator.serviceWorker.register("/sw.js").catch(() => {});
   renderChat();
+  renderJobs();
   render();
   void refresh();
   window.setInterval(() => {

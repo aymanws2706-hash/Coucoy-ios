@@ -238,6 +238,16 @@ fn local_offset_secs() -> i64 {
     ((diff as f64 / 900.0).round() as i64) * 900
 }
 
+/// "2026-10-16T18:30" (or with a space, seconds optional) in local time → epoch ms.
+pub fn local_to_epoch_ms(text: &str) -> Option<i64> {
+    let t = text.replace(' ', "T");
+    let num = |a: usize, b: usize| t.get(a..b).and_then(|s| s.parse::<i64>().ok());
+    let (y, mo, d) = (num(0, 4)?, num(5, 7)?, num(8, 10)?);
+    let (h, mi) = (num(11, 13).unwrap_or(9), num(14, 16).unwrap_or(0));
+    let local = civil_to_secs(y, mo, d, h, mi, 0);
+    Some((local - local_offset_secs()) * 1000)
+}
+
 /// "Tue 2026-10-14 09:00" in local time, for the assistant.
 pub fn local_label(ms: i64) -> String {
     const WD: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
