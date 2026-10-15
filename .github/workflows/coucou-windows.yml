@@ -13,6 +13,12 @@ on:
 permissions:
   contents: write
 
+# One build at a time, newest wins: an older build still running is cancelled
+# so it can never publish over a newer one.
+concurrency:
+  group: coucou-windows-release
+  cancel-in-progress: true
+
 env:
   COUCOU_SHA: f4bfb499d852d63e824853ec9c027b57e70bbc5a
 
