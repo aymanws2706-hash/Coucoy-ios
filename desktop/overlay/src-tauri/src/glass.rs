@@ -9,11 +9,22 @@ use tauri::WebviewWindow;
 
 static ON: AtomicBool = AtomicBool::new(false);
 
-/// Turns the blur on or off; the page keeps the user's choice.
+/// Turns the blur on or off; the page keeps the user's choice. Turning it off
+/// when it was never on does nothing at all: on Windows 11 even "clearing" the
+/// backdrop changes how the window is painted (a solid grey box).
 pub fn set_enabled(win: &WebviewWindow, on: bool) -> bool {
-    let applied = imp::apply(win, on);
-    ON.store(applied && on, Ordering::Relaxed);
-    if !(applied && on) {
+    let was = ON.load(Ordering::Relaxed);
+    if !on {
+        if was {
+            imp::restore_default(win);
+            imp::clear_region(win);
+            ON.store(false, Ordering::Relaxed);
+        }
+        return true;
+    }
+    let applied = imp::apply(win);
+    ON.store(applied, Ordering::Relaxed);
+    if !applied {
         imp::clear_region(win);
     }
     applied
@@ -37,13 +48,27 @@ mod imp {
         win.hwnd().ok().map(|h| HWND(h.0 as _))
     }
 
-    pub fn apply(win: &WebviewWindow, on: bool) -> bool {
-        if on {
-            // A dark, light tint: the colour comes from the page's own layers.
-            window_vibrancy::apply_acrylic(win, Some((14, 16, 22, 60))).is_ok()
-        } else {
-            let _ = window_vibrancy::clear_acrylic(win);
-            true
+    pub fn apply(win: &WebviewWindow) -> bool {
+        // A dark, light tint: the colour comes from the page's own layers.
+        window_vibrancy::apply_acrylic(win, Some((14, 16, 22, 60))).is_ok()
+    }
+
+    /// Back to exactly how the window was before: backdrop "auto" (0), which
+    /// is the default — not "none" (1), which Windows 11 paints solid.
+    pub fn restore_default(win: &WebviewWindow) {
+        use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_SYSTEMBACKDROP_TYPE};
+        // Windows 10 turns the accent off here; on Windows 11 this sets the
+        // backdrop to "none", which the next call puts back to "auto".
+        let _ = window_vibrancy::clear_acrylic(win);
+        let Some(hwnd) = hwnd(win) else { return };
+        let auto: u32 = 0;
+        unsafe {
+            let _ = DwmSetWindowAttribute(
+                hwnd,
+                DWMWA_SYSTEMBACKDROP_TYPE,
+                &auto as *const u32 as _,
+                std::mem::size_of::<u32>() as u32,
+            );
         }
     }
 
@@ -86,9 +111,10 @@ mod imp {
 mod imp {
     use tauri::WebviewWindow;
 
-    pub fn apply(_win: &WebviewWindow, _on: bool) -> bool {
+    pub fn apply(_win: &WebviewWindow) -> bool {
         false
     }
+    pub fn restore_default(_win: &WebviewWindow) {}
     pub fn set_region(_win: &WebviewWindow, _x: f64, _y: f64, _w: f64, _h: f64, _r: f64) {}
     pub fn clear_region(_win: &WebviewWindow) {}
 }
