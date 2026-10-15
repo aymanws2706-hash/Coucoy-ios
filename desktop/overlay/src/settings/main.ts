@@ -648,7 +648,7 @@ async function main() {
 
   clear(root);
   root.append(
-    h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
+    h("h1", {}, h("span", { text: "Putshi" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     apiSection(hasKey),
     daySection(hasCity, hasCalendar),

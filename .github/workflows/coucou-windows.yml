@@ -76,28 +76,38 @@ jobs:
         run: |
           $v = (Get-Content coucou/windows/src-tauri/tauri.conf.json | ConvertFrom-Json).version
           New-Item -ItemType Directory out | Out-Null
-          Copy-Item "coucou/windows/release/Coucou-Windows-$v.msi" out/Coucou-Windows.msi
-          Copy-Item "coucou/windows/release/Coucou-Windows-$v-setup.exe" out/Coucou-Windows-setup.exe
+          Copy-Item "coucou/windows/release/Putshi-Windows-$v.msi" out/Putshi-Windows.msi
+          Copy-Item "coucou/windows/release/Putshi-Windows-$v-setup.exe" out/Putshi-Windows-setup.exe
           New-Item -ItemType Directory portable | Out-Null
-          Copy-Item coucou/windows/target/release/coucou.exe, coucou/windows/target/release/coucou-hook.exe portable/
-          Compress-Archive -Path portable/* -DestinationPath out/Coucou-Windows-portable.zip
+          # The app binary is named after the product (Putshi.exe) or the crate (coucou.exe).
+          $exe = @("coucou/windows/target/release/Putshi.exe", "coucou/windows/target/release/coucou.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          Copy-Item $exe portable/Putshi.exe
+          Copy-Item coucou/windows/target/release/coucou-hook.exe portable/
+          Compress-Archive -Path portable/* -DestinationPath out/Putshi-Windows-portable.zip
           Get-ChildItem out | Format-Table Name, Length
           "version=$v" >> $env:GITHUB_OUTPUT
+
+      # Start the release fresh so files from older builds (Coucou-*) don't linger.
+      - name: Clear the previous release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: gh release delete coucou-windows --yes --cleanup-tag -R "$GITHUB_REPOSITORY" || true
 
       - name: Publish the coucou-windows release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: coucou-windows
-          name: "Coucou for Windows ${{ steps.files.outputs.version }} (personal build, notch with PC stats)"
+          name: "Putshi for Windows ${{ steps.files.outputs.version }} (personal build of Coucou)"
           body: |
-            The original Coucou desktop app by Louis Raillé (MIT), built from commit ${{ env.COUCOU_SHA }}.
+            Putshi for Windows: a personal build of the Coucou desktop app by Louis Raillé (MIT), from commit ${{ env.COUCOU_SHA }} with the changes in desktop/.
 
             Pick one:
-            - **Coucou-Windows.msi**: Windows Installer, recommended.
-            - **Coucou-Windows-setup.exe**: the other installer.
-            - **Coucou-Windows-portable.zip**: no install; unzip and run coucou.exe.
+            - **Putshi-Windows.msi**: Windows Installer, recommended.
+            - **Putshi-Windows-setup.exe**: the other installer.
+            - **Putshi-Windows-portable.zip**: no install; unzip and run Putshi.exe.
 
             It isn't code-signed, so Windows shows "Windows protected your PC": click **More info › Run anyway**.
-            Microsoft Defender sometimes flags the unsigned setup.exe by mistake; the MSI or the portable zip avoid that.
+            Uninstall "Coucou" first if an older build is installed.
           files: out/*
           make_latest: false
