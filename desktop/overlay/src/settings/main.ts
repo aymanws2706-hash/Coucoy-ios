@@ -547,9 +547,9 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
 function glassOn(): boolean {
   try {
-    return localStorage.getItem("putshi.glass") !== "0";
+    return localStorage.getItem("putshi.glassblur") === "1";
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -608,16 +608,16 @@ function generalSection(): HTMLElement {
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
     h("div", { class: "row" },
-      h("label", { text: "Liquid Glass blur" }),
+      h("label", { text: "Desktop blur (experimental)" }),
       toggle(glassOn(), (v) => {
         try {
-          localStorage.setItem("putshi.glass", v ? "1" : "0");
+          localStorage.setItem("putshi.glassblur", v ? "1" : "0");
         } catch {
           /* storage blocked: the choice won't stick */
         }
         void emitEvent("glass-changed");
       }),
-      h("span", { class: "hint", text: "blurs what's behind the island; turn off if it looks wrong" }),
+      h("span", { class: "hint", text: "blurs the desktop behind the island; if a big grey box appears, turn it off" }),
     ),
   );
 }

@@ -64,13 +64,15 @@ async function main() {
 
   // ── Personal build: Liquid Glass ────────────────────────────────────────
   const applyGlass = async () => {
-    let want = true;
+    // The desktop blur is experimental (on some PCs Windows frosts the whole
+    // window instead of the island): off unless switched on in Settings.
+    let want = false;
     try {
-      want = localStorage.getItem("putshi.glass") !== "0";
+      want = localStorage.getItem("putshi.glassblur") === "1";
     } catch {
       /* storage blocked: keep the default */
     }
-    // Outside the app (browser preview) there is no window to blur: show glass.
+    // Always tell Rust, so a blur left on by an older build is cleared.
     const took = IS_TAURI ? ((await Bridge.setGlass(want)) ?? false) : want;
     document.documentElement.classList.toggle("glass", want && took);
     document.documentElement.classList.toggle("no-glass", !(want && took));
