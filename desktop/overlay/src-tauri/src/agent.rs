@@ -30,15 +30,28 @@ const COMMAND_TIMEOUT: Duration = Duration::from_secs(60);
 #[derive(Default)]
 pub struct Approvals {
     next: AtomicU64,
-    waiting: Mutex<HashMap<u64, oneshot::Sender<bool>>>,
+    waiting: Mutex<HashMap<u64, (oneshot::Sender<bool>, String, String)>>,
 }
 
 impl Approvals {
-    /// The island answered a card.
+    /// The island or the phone answered a card.
     pub fn decide(&self, id: u64, allow: bool) {
-        if let Some(tx) = self.waiting.lock().unwrap().remove(&id) {
+        if let Some((tx, _, _)) = self.waiting.lock().unwrap().remove(&id) {
             let _ = tx.send(allow);
         }
+    }
+
+    /// Cards still waiting for an answer, for the phone.
+    pub fn pending(&self) -> Vec<Value> {
+        let mut list: Vec<(u64, Value)> = self
+            .waiting
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(id, (_, what, detail))| (*id, json!({ "id": id, "what": what, "detail": detail })))
+            .collect();
+        list.sort_by_key(|(id, _)| *id);
+        list.into_iter().map(|(_, v)| v).collect()
     }
 }
 
@@ -46,8 +59,9 @@ async fn ask(app: &AppHandle, what: &str, detail: &str) -> bool {
     let approvals = app.state::<Approvals>();
     let id = approvals.next.fetch_add(1, Ordering::Relaxed) + 1;
     let (tx, rx) = oneshot::channel();
-    approvals.waiting.lock().unwrap().insert(id, tx);
+    approvals.waiting.lock().unwrap().insert(id, (tx, what.to_string(), detail.to_string()));
     let _ = app.emit("mochi-approval", json!({ "id": id, "what": what, "detail": detail }));
+    crate::push::send(app, "Mochi needs your OK", &format!("{what}: {detail}"));
     let allowed = matches!(tokio::time::timeout(APPROVAL_TIMEOUT, rx).await, Ok(Ok(true)));
     approvals.waiting.lock().unwrap().remove(&id);
     let _ = app.emit("mochi-approval-done", id);

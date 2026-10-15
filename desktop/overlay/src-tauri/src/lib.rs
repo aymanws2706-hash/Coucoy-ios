@@ -4,6 +4,8 @@ mod agent;
 mod claude;
 mod clip;
 mod day;
+mod phone;
+mod push;
 mod desk;
 mod files;
 mod hooks;
@@ -249,6 +251,40 @@ fn clipboard_copy(app: AppHandle, index: usize) -> Result<(), String> {
 #[tauri::command]
 fn clipboard_clear(history: State<clip::History>) {
     history.0.lock().unwrap().clear();
+}
+
+// ── Phone link (personal build) ─────────────────────────────────────────────
+
+#[tauri::command]
+async fn phone_info(app: AppHandle) -> Result<phone::PhoneInfo, String> {
+    blocking(move || phone::info(&app)).await
+}
+
+#[tauri::command]
+async fn phone_enable(app: AppHandle) -> Result<phone::PhoneInfo, String> {
+    blocking(move || phone::enable(&app)).await?
+}
+
+#[tauri::command]
+async fn phone_disable(app: AppHandle) -> Result<(), String> {
+    blocking(move || phone::disable(&app)).await?
+}
+
+/// The island's timer / Claude Code state, for the phone page.
+#[tauri::command]
+fn phone_publish(app: AppHandle, snapshot: serde_json::Value) {
+    phone::publish(&app, snapshot);
+}
+
+/// An alert to the phone through ntfy (timer done, Claude Code, PC health),
+/// only when the PC has been left alone; `now` skips that check (the test button).
+#[tauri::command]
+fn push_notify(app: AppHandle, title: String, message: String, now: Option<bool>) {
+    if now.unwrap_or(false) {
+        push::send_now(&app, &title, &message);
+    } else {
+        push::send(&app, &title, &message);
+    }
 }
 
 /// Allow / Deny on a card Mochi's own chat raised (not a Claude Code one).
@@ -503,6 +539,7 @@ pub fn run() {
         .manage(agent::Approvals::default())
         .manage(day::Day::default())
         .manage(clip::History::default())
+        .manage(phone::Phone::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -548,11 +585,20 @@ pub fn run() {
             clipboard_history,
             clipboard_copy,
             clipboard_clear,
+            phone_info,
+            phone_enable,
+            phone_disable,
+            phone_publish,
+            push_notify,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
             tray::build(&handle)?;
             clip::watch(handle.clone());
+            // The phone link comes back on by itself once it has been paired.
+            if phone::token().is_some() {
+                phone::start(handle.clone());
+            }
             {
                 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
                 let chat_key = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Space);

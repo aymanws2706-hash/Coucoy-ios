@@ -119,12 +119,28 @@ export const Bridge = {
   weather: (force = false) => callOrThrow<Weather>("weather", { force }),
   calendar: (force = false) => callOrThrow<CalendarEvent[]>("calendar", { force }),
 
+  phoneInfo: () => callOrThrow<PhoneInfo>("phone_info"),
+  phoneEnable: () => callOrThrow<PhoneInfo>("phone_enable"),
+  phoneDisable: () => callOrThrow<void>("phone_disable"),
+  phonePublish: (snapshot: unknown) => call<void>("phone_publish", { snapshot }),
+  /** ntfy alert; sent only when the PC has been idle 2 min unless `now`. */
+  pushNotify: (title: string, message: string, now = false) =>
+    call<void>("push_notify", { title, message, now }),
+
   /** Desktop info for the notch and the PC view. */
   systemStats: () => call<SystemStats>("system_stats"),
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
 };
+
+export interface PhoneInfo {
+  enabled: boolean;
+  tailscaleFound: boolean;
+  url: string | null;
+  qrSvg: string | null;
+  message: string | null;
+}
 
 export interface NowPlaying {
   title: string;

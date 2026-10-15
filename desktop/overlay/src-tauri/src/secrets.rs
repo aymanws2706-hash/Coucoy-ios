@@ -19,6 +19,8 @@ pub const KNOWN_KEYS: &[&str] = &[
     // Personal build: "Your day".
     "weather-city",
     "calendar-ics-url",
+    "phone-token",
+    "ntfy-topic",
 ];
 
 fn entry(key: &str) -> Option<Entry> {

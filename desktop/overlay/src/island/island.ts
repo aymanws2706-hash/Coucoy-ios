@@ -187,6 +187,7 @@ export class Island {
       blip: () => Sound.play("blip"),
     };
 
+    this.decide = actions.decide;
     this.wakeStrip = h("div", { id: "wake-strip" });
     this.botGlow = h("div", { id: "bot-glow" });
     this.botCanvas = h("canvas", { id: "bot-canvas" });
@@ -245,6 +246,34 @@ export class Island {
     this.startStats();
   }
 
+  // ── Phone link (personal build) ─────────────────────────────────────────────
+
+  /** What only the island knows, for the phone page: timer, Claude Code, alert. */
+  private publishForPhone() {
+    const claude = State.tasks.find((t) => t.id === "integration_claude");
+    const req = State.pendingApproval;
+    void Bridge.phonePublish({
+      timer: State.timer ? { endsAt: State.timer.endsAt, label: State.timer.label } : null,
+      claude: claude
+        ? {
+            state: claude.state,
+            step: claude.steps.at(-1) ?? null,
+            approval: req && !req.requestId.startsWith("mochi:") ? { tool: req.tool, command: req.command } : null,
+          }
+        : null,
+      alert: State.alertText,
+    });
+  }
+
+  /** Allow / Deny on the Claude Code card, sent from the phone. */
+  decideFromPhone(decision: "allow" | "deny") {
+    const req = State.pendingApproval;
+    if (!req || req.requestId.startsWith("mochi:")) return;
+    this.decide(decision);
+  }
+
+  private decide: (d: "allow" | "deny") => void = () => {};
+
   // ── Timer (personal build) ──────────────────────────────────────────────────
 
   private timerTick: number | null = null;
@@ -263,6 +292,7 @@ export class Island {
       if (Date.now() >= t.endsAt) {
         this.stopTimer();
         State.noteMessage = `⏰ Time's up${t.label ? ": " + t.label : ""}`;
+        void Bridge.pushNotify("⏰ Time's up", t.label || "Your timer ended.");
         Sound.play("finish");
         this.engine.triggerEmote("proud", 3);
         this.alert("note");
@@ -312,6 +342,7 @@ export class Island {
     if (this.alerted.has(id)) return;
     this.alerted.add(id);
     State.alertText = text;
+    void Bridge.pushNotify("PC alert", text);
     this.engine.triggerEmote("surprised");
     Sound.play(id === "battery" ? "error" : "approval");
     if (this.alertTimer != null) window.clearTimeout(this.alertTimer);
@@ -354,6 +385,7 @@ export class Island {
       if (State.mode === "expanded" && State.view === "clipboard") {
         State.clipboard = (await Bridge.clipboardHistory()) ?? [];
       }
+      this.publishForPhone();
       State.notify();
       // The notch is always on screen in this build; slow down only when paused.
       const delay = State.paused ? 30_000 : 2_000;

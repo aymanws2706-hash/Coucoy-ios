@@ -24,6 +24,10 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 # Desktop info for the notch and the PC view (personal build).
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-clipboard-manager = "2"
+# Phone link: a tiny local web server, its token and the pairing QR code.
+tiny_http = "0.12"
+getrandom = "0.3"
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 sysinfo = { version = "0.39", default-features = false, features = ["system", "disk", "network"] }
 
 [target.'cfg(windows)'.dependencies]

@@ -18,8 +18,12 @@ full copy of Coucou's file with these changes:
 | `src-tauri/src/desk.rs` | New. Now playing + play/pause/skip (Windows media controls), volume and mic mute (Core Audio), brightness (WMI, laptops), Wi-Fi, mic/camera in use (registry), downloads in progress, lock/sleep/screenshot/folders. |
 | `src-tauri/src/clip.rs` | New. Last 8 copied texts, memory only. |
 | `src/views/controls.ts` | New. Controls and Clipboard panels. |
-| `src-tauri/src/secrets.rs` | Two more stored values: `weather-city`, `calendar-ics-url`. |
-| `src/settings/main.ts` | "Your day" section: city and calendar link. |
+| `src-tauri/src/phone.rs` | New. Phone link: web app + JSON API on 127.0.0.1:8771, token auth, shared over HTTPS by `tailscale serve`, pairing QR. |
+| `src-tauri/src/push.rs` | New. ntfy alerts to the phone, only when the PC has been idle 2 min. |
+| `phone.html`, `src/phone/`, `vite.config.ts` | New. Putshi phone page (chat, approvals, music, timer, today, PC, lock/sleep), built with the rest. |
+| `src/island/hooks.ts` | Claude Code permission / finished also alert the phone. |
+| `src-tauri/src/secrets.rs` | More stored values: `weather-city`, `calendar-ics-url`, `phone-token`, `ntfy-topic`. |
+| `src/settings/main.ts` | "Your day" (city, calendar link) and "Phone" (turn on, QR code, ntfy topic) sections. |
 | `src/views/today.ts` | New. Today panel (clock, weather now and next 6 hours, next events) and the notch line. |
 | `src/views/pc.ts`, `pc.css` | New. This PC panel: meters and top apps with a close button; styles for everything added. |
 | `src/views/views.ts`, `icons.ts` | "This PC" tab (chip icon) in the header. |

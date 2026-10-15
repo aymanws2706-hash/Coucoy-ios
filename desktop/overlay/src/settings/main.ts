@@ -332,6 +332,113 @@ function daySection(hasCity: boolean, hasCalendar: boolean): HTMLElement {
   );
 }
 
+// ── Phone (personal build) ────────────────────────────────────────────────────
+
+function phoneSection(hasTopic: boolean): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const dot = statusDot(false);
+  const section = h("section", {}, h("h2", {}, dot, h("span", { text: "Phone" })), body);
+
+  async function draw(fresh?: import("../core/bridge").PhoneInfo, error?: string) {
+    clear(body);
+    body.append(h("div", { class: "hint", text: "Checking…" }));
+    let info = fresh;
+    if (!info) {
+      try {
+        info = await Bridge.phoneInfo();
+      } catch (err) {
+        error = String(err);
+      }
+    }
+    clear(body);
+    dot.style.background = info?.enabled && info.url ? "#22c55e" : "#f4505e";
+
+    body.append(h("div", { class: "hint", text:
+      "Putshi on your iPhone: chat with Mochi, approve what it does, control music, timers and the PC. " +
+      "It goes through Tailscale, so only your own devices can reach it." }));
+
+    if (info?.message) body.append(h("div", { class: "notice err", text: info.message }));
+    if (error) body.append(h("div", { class: "notice err", text: error }));
+
+    if (!info?.tailscaleFound) {
+      body.append(h("ol", { class: "hint", style: "padding-left:18px;display:flex;flex-direction:column;gap:4px" },
+        h("li", { text: "Install Tailscale on this PC (tailscale.com/download) and sign in." }),
+        h("li", { text: "Install Tailscale on the iPhone (App Store) and sign in with the same account." }),
+        h("li", { text: "Come back here and press Turn on." }),
+      ));
+    }
+
+    const row = h("div", { class: "row" });
+    if (info?.enabled) {
+      const off = h("button", { class: "danger", text: "Turn off" });
+      off.addEventListener("click", async () => {
+        try {
+          await Bridge.phoneDisable();
+        } catch (err) {
+          return draw(undefined, String(err));
+        }
+        void draw();
+      });
+      const again = h("button", { text: "Refresh" });
+      again.addEventListener("click", async () => {
+        try {
+          void draw(await Bridge.phoneEnable());
+        } catch (err) {
+          void draw(undefined, String(err));
+        }
+      });
+      row.append(again, off);
+    } else {
+      const on = h("button", { class: "primary", text: "Turn on" });
+      on.addEventListener("click", async () => {
+        on.textContent = "Setting up…";
+        try {
+          void draw(await Bridge.phoneEnable());
+        } catch (err) {
+          void draw(undefined, String(err));
+        }
+      });
+      row.append(on);
+    }
+    body.append(row);
+
+    if (info?.enabled && info.qrSvg && info.url) {
+      const qr = h("div", { style: "width:200px;height:200px;background:#fff;padding:0;border-radius:10px;overflow:hidden" });
+      qr.innerHTML = info.qrSvg;
+      body.append(
+        h("div", { style: "display:flex;gap:16px;align-items:center" },
+          qr,
+          h("ol", { class: "hint", style: "padding-left:18px;display:flex;flex-direction:column;gap:6px" },
+            h("li", { text: "On the iPhone, open the Camera and point it at this code." }),
+            h("li", { text: "Tap the link: Putshi opens in Safari." }),
+            h("li", { text: "Share › Add to Home Screen." }),
+            h("li", { text: `Address: ${info.url}` }),
+          ),
+        ),
+      );
+    }
+
+    body.append(
+      h("div", { class: "hint", style: "margin-top:6px", text:
+        "Lock-screen alerts: install “ntfy” from the App Store, tap + and subscribe to a topic name only you know " +
+        "(like putshi-7f3k9q). Put the same name here. Alerts come when Mochi needs an OK, a timer ends, or Claude Code " +
+        "finishes, and only while nobody is using the PC." }),
+      storedField("ntfy-topic", "ntfy topic", "putshi-" + Math.random().toString(36).slice(2, 8), false, hasTopic,
+        (p) => (p ? "Alerts go to your topic." : "No alerts yet.")),
+    );
+    const test = h("button", { text: "Send a test alert" });
+    test.addEventListener("click", () => {
+      void Bridge.pushNotify("Putshi", "Test alert from your PC. 👋", true);
+      test.textContent = "Sent";
+      window.setTimeout(() => (test.textContent = "Send a test alert"), 2000);
+    });
+    body.append(h("div", { class: "row" }, test));
+  }
+
+  void draw();
+  return section;
+}
+
 // ── Integrations section ──────────────────────────────────────────────────────
 
 interface IntegrationDef {
@@ -510,6 +617,7 @@ async function main() {
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
   const hasCity = (await Bridge.secretPresent("weather-city")) ?? false;
   const hasCalendar = (await Bridge.secretPresent("calendar-ics-url")) ?? false;
+  const hasTopic = (await Bridge.secretPresent("ntfy-topic")) ?? false;
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
@@ -524,6 +632,7 @@ async function main() {
     claudeSection(status),
     apiSection(hasKey),
     daySection(hasCity, hasCalendar),
+    phoneSection(hasTopic),
     integrationsSection(present),
     generalSection(),
     h("div", {
