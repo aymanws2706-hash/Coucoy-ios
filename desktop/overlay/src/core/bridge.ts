@@ -129,12 +129,33 @@ export const Bridge = {
   pushNotify: (title: string, message: string, now = false) =>
     call<void>("push_notify", { title, message, now }),
 
+  awarenessGet: () => callOrThrow<AwarenessConfig>("awareness_get"),
+  awarenessSet: (config: AwarenessConfig) => callOrThrow<void>("awareness_set", { config }),
+  addReminder: (text: string, at: number) => call<void>("add_reminder", { text, at }),
+  localTimeMs: (text: string) => call<number | null>("local_time_ms", { text }),
+
   /** Desktop info for the notch and the PC view. */
   systemStats: () => call<SystemStats>("system_stats"),
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
 };
+
+export interface AwarenessConfig {
+  titles: boolean;
+  apps: boolean;
+  screen: boolean;
+  watch: string[];
+  ignore: string[];
+}
+
+export interface Suggestion {
+  id: string;
+  text: string;
+  /** Local "2026-10-16T18:30", when known. */
+  when: string | null;
+  why: string;
+}
 
 export interface PhoneInfo {
   enabled: boolean;

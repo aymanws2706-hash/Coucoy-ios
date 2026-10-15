@@ -53,6 +53,8 @@ export class Island {
   /** Orange / green dots while an app uses the mic / camera, as on a phone. */
   private notchMic!: HTMLElement;
   private notchCam!: HTMLElement;
+  /** Awareness indicator: dim while watching, bright while it takes a look. */
+  private notchEye!: HTMLElement;
 
   private header!: ViewHost;
   private views!: Map<IslandViewName, ViewHost>;
@@ -197,7 +199,8 @@ export class Island {
     this.notchText = h("span", { class: "ni-text" });
     this.notchMic = h("i", { class: "ni-dot mic", title: "An app is using the microphone" });
     this.notchCam = h("i", { class: "ni-dot cam", title: "An app is using the camera" });
-    this.notchInfo = h("div", { id: "notch-info" }, this.notchMic, this.notchCam, this.notchText);
+    this.notchEye = h("i", { class: "ni-dot eye", title: "Awareness is on (Settings › Awareness)" });
+    this.notchInfo = h("div", { id: "notch-info" }, this.notchEye, this.notchMic, this.notchCam, this.notchText);
 
     this.header = buildHeader(actions);
     this.views = buildViews(actions, () => this.animateGeometry(false));
@@ -1138,6 +1141,8 @@ export class Island {
       this.notchText.textContent = notchLine();
       this.notchMic.style.display = State.activity?.micInUse ? "" : "none";
       this.notchCam.style.display = State.activity?.cameraInUse ? "" : "none";
+      this.notchEye.style.display = State.watching ? "" : "none";
+      this.notchEye.classList.toggle("looking", Date.now() < State.lookingUntil);
     }
     const showGrid = compact && badged;
     this.miniGrid.style.opacity = showGrid ? "1" : "0";

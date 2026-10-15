@@ -3,6 +3,7 @@
 // identically.
 
 import { h, svg, clear, dot } from "./dom";
+import { Bridge } from "../core/bridge";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
 import { State, type AgentTask } from "../core/state";
@@ -500,6 +501,47 @@ function buildPlaceholder(title: string, sub: string): ViewHost {
   return { el: h("div", { class: "view" }, card(null, body)), sync() {} };
 }
 
+// ── Suggestion (personal build: Awareness) ────────────────────────────────────
+
+function buildSuggest(actions: ViewActions): ViewHost {
+  const title = h("div", { class: "title" });
+  const why = h("div", { class: "sub" });
+  const row = h("div", { class: "actions" });
+  const who = h("div", { class: "who-row" }, h("span", { class: "n", text: "Putshi noticed" }));
+  const el = h("div", { class: "view" }, card("indigo", stack(112, 16, who, title, why, row)));
+  let key = "";
+  return {
+    el,
+    sync() {
+      const s = State.suggestion;
+      if (!s || s.id === key) return;
+      key = s.id;
+      title.textContent = s.text;
+      why.textContent = s.why;
+      clear(row);
+      const done = () => {
+        State.suggestion = null;
+        actions.collapse();
+      };
+      const at = async (ms: number | null) => {
+        if (ms != null) await Bridge.addReminder(s.text, ms);
+        actions.blip();
+        done();
+      };
+      if (s.when) {
+        const label = s.when.slice(11, 16);
+        row.append(btn(`Remind me at ${label}`, "primary", () => {
+          void Bridge.localTimeMs(s.when!).then((ms) => at(ms ?? Date.now() + 3_600_000));
+        }));
+      }
+      row.append(
+        btn("In 1 hour", s.when ? "secondary" : "primary", () => void at(Date.now() + 3_600_000)),
+        btn("Not now", "secondary", () => done()),
+      );
+    },
+  };
+}
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 
 export function buildViews(
@@ -508,6 +550,7 @@ export function buildViews(
 ): Map<IslandViewName, ViewHost> {
   const map = new Map<IslandViewName, ViewHost>();
   map.set("today", buildToday(actions));
+  map.set("suggest", buildSuggest(actions));
   map.set("pc", buildPc(actions));
   map.set("controls", buildControls(actions));
   map.set("clipboard", buildClipboard(actions));

@@ -691,3 +691,14 @@ button.ct-icon:hover {
   background: #30d158;
   box-shadow: 0 0 6px rgba(48, 209, 88, 0.7);
 }
+
+.ni-dot.eye {
+  background: #8ea2ff;
+  opacity: 0.45;
+  transition: opacity 0.3s ease-out, box-shadow 0.3s ease-out;
+}
+
+.ni-dot.eye.looking {
+  opacity: 1;
+  box-shadow: 0 0 8px rgba(142, 162, 255, 0.9);
+}

@@ -3,7 +3,7 @@
 import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 import type {
-  AppUsage, CalendarEvent, DeskActivity, DeskControls, NowPlaying, SystemStats, Weather,
+  AppUsage, CalendarEvent, DeskActivity, DeskControls, NowPlaying, Suggestion, SystemStats, Weather,
 } from "./bridge";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
@@ -157,6 +157,11 @@ class AppState {
   controls: DeskControls | null = null;
   activity: DeskActivity | null = null;
   clipboard: string[] = [];
+
+  /** Awareness: on at all, and something Putshi noticed. */
+  watching = false;
+  lookingUntil = 0;
+  suggestion: Suggestion | null = null;
 
   /** A countdown in the notch. */
   timer: { endsAt: number; label: string; minutes: number } | null = null;

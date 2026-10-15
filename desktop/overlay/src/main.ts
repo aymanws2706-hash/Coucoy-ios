@@ -90,6 +90,16 @@ async function main() {
     island.startTimer(minutes, label);
   });
   await onEvent<null>("timer-stop", () => island.stopTimer());
+  await onEvent<{ watching: boolean; looking?: boolean }>("awareness", ({ watching, looking }) => {
+    State.watching = watching;
+    if (looking) State.lookingUntil = Date.now() + 4000;
+    State.notify();
+  });
+  await onEvent<import("./core/bridge").Suggestion>("suggestion", (s) => {
+    State.suggestion = s;
+    Sound.play("question");
+    island.alert("suggest");
+  });
   await onEvent<{ at: number; text: string }>("reminder", ({ at, text }) => island.addReminder(at, text));
   await onEvent<"allow" | "deny">("phone-claude", (d) => island.decideFromPhone(d));
   await onEvent<string>("mochi-step", (text) => {

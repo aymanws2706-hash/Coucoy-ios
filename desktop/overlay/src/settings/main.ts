@@ -439,6 +439,66 @@ function phoneSection(hasTopic: boolean): HTMLElement {
   return section;
 }
 
+// ── Awareness (personal build) ────────────────────────────────────────────────
+
+function awarenessSection(): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:10px" });
+  const section = h("section", {}, h("h2", {}, h("span", { text: "Awareness" })), body);
+
+  void (async () => {
+    let cfg: import("../core/bridge").AwarenessConfig;
+    try {
+      cfg = await Bridge.awarenessGet();
+    } catch (err) {
+      body.append(h("div", { class: "notice err", text: String(err) }));
+      return;
+    }
+    const save = async () => {
+      try {
+        await Bridge.awarenessSet(cfg);
+      } catch (err) {
+        body.append(h("div", { class: "notice err", text: `Could not save: ${String(err)}` }));
+      }
+    };
+    const list = (v: string) => v.split(",").map((x) => x.trim()).filter(Boolean);
+
+    body.append(
+      h("div", { class: "hint", text:
+        "Putshi notices things like “I'll call you back” or “send me the plans tomorrow” and offers a reminder. " +
+        "Everything is off until you switch it on. Pictures are sent to Claude to read and never saved; " +
+        "a small blue dot in the notch shows when it's watching, and Pause in the tray stops it. " +
+        "It uses a little of your Claude credit (the cheaper Haiku model)." }),
+      h("div", { class: "row" },
+        h("label", { text: "Window titles" }),
+        toggle(cfg.titles, (v) => { cfg.titles = v; void save(); }),
+        h("span", { class: "hint", text: "which app and chat or document is open" }),
+      ),
+      h("div", { class: "row" },
+        h("label", { text: "Messaging apps" }),
+        toggle(cfg.apps, (v) => { cfg.apps = v; void save(); }),
+        h("span", { class: "hint", text: "reads the apps below when they're in front, at most every 3 min" }),
+      ),
+      h("div", { class: "row" },
+        h("label", { text: "Whole screen" }),
+        toggle(cfg.screen, (v) => { cfg.screen = v; void save(); }),
+        h("span", { class: "hint", text: "a look every 15 min while you're using the PC" }),
+      ),
+    );
+
+    const watch = h("input", { type: "text", style: "flex:1 1 auto;min-width:0", value: cfg.watch.join(", ") }) as HTMLInputElement;
+    watch.addEventListener("change", () => { cfg.watch = list(watch.value); void save(); });
+    const ignore = h("input", { type: "text", style: "flex:1 1 auto;min-width:0", value: cfg.ignore.join(", ") }) as HTMLInputElement;
+    ignore.addEventListener("change", () => { cfg.ignore = list(ignore.value); void save(); });
+    body.append(
+      h("div", { class: "row" }, h("label", { text: "Apps to read" }), watch),
+      h("div", { class: "row" }, h("label", { text: "Never look at" }), ignore),
+      h("div", { class: "hint", text: "App names or words in a window title, separated by commas. Private and incognito browser windows are always skipped." }),
+    );
+  })();
+
+  return section;
+}
+
 // ── Integrations section ──────────────────────────────────────────────────────
 
 interface IntegrationDef {
@@ -653,6 +713,7 @@ async function main() {
     apiSection(hasKey),
     daySection(hasCity, hasCalendar),
     phoneSection(hasTopic),
+    awarenessSection(),
     integrationsSection(present),
     generalSection(),
     h("div", {

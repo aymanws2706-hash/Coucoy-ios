@@ -1,6 +1,7 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod agent;
+mod awareness;
 mod claude;
 mod clip;
 mod day;
@@ -301,6 +302,30 @@ fn push_notify(app: AppHandle, title: String, message: String, now: Option<bool>
     }
 }
 
+#[tauri::command]
+fn awareness_get(aw: State<awareness::Awareness>) -> awareness::Config {
+    aw.config()
+}
+
+#[tauri::command]
+fn awareness_set(aw: State<awareness::Awareness>, config: awareness::Config) -> Result<(), String> {
+    aw.set_config(config)
+}
+
+/// Accepting a suggestion (or any reminder from the island): notch at the
+/// time, plus a scheduled phone alert.
+#[tauri::command]
+fn add_reminder(app: AppHandle, text: String, at: i64) {
+    let _ = app.emit("reminder", serde_json::json!({ "at": at, "text": text }));
+    push::send_at(&app, "⏰ Reminder", &text, at / 1000);
+}
+
+/// "2026-10-16T18:30" in local time → epoch ms (for suggestions' times).
+#[tauri::command]
+fn local_time_ms(text: String) -> Option<i64> {
+    day::local_to_epoch_ms(&text)
+}
+
 /// Liquid Glass blur behind the island (Windows acrylic). Returns whether it took.
 #[tauri::command]
 fn set_glass(app: AppHandle, on: bool) -> bool {
@@ -561,6 +586,7 @@ pub fn run() {
         .manage(clip::History::default())
         .manage(phone::Phone::default())
         .manage(jobs::Jobs::default())
+        .manage(awareness::Awareness::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -612,6 +638,10 @@ pub fn run() {
             phone_publish,
             push_notify,
             set_glass,
+            awareness_get,
+            awareness_set,
+            add_reminder,
+            local_time_ms,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -619,6 +649,8 @@ pub fn run() {
             clip::watch(handle.clone());
             // Tasks left from the phone: watch for new ones, run them when due.
             jobs::start(handle.clone());
+            // Awareness: does nothing until switched on in Settings.
+            awareness::start(handle.clone());
             // The phone link comes back on by itself once it has been paired.
             if phone::token().is_some() {
                 phone::start(handle.clone());

@@ -26,6 +26,7 @@ full copy of Coucou's file with these changes:
 | `src-tauri/src/jobs.rs` | New. Tasks for the PC: from the phone (signed with the pairing token, via the phone link or the private ntfy topic "<topic>-jobs") or scheduled by the assistant; run when due, results pushed to the phone. |
 | `public/sw.js`, `src/phone/offline.ts` | Phone offline mode: the page is kept on the phone; with the PC off it chats with Claude directly, queues tasks for the PC, and sets reminders through ntfy. |
 | Reminders | `remind_me` on PC and phone: notch at the time plus a scheduled ntfy alert (works with the PC off, up to 3 days ahead). |
+| `src-tauri/src/awareness.rs` | New. Awareness (opt-in, three levels: window titles, messaging-app windows, whole screen every 15 min): pictures go to Claude Haiku to spot commitments and are never saved; ignore list and private windows skipped; Pause stops it. Suggestions open a "Putshi noticed" card with Remind me / In 1 hour / Not now. |
 | `src-tauri/src/push.rs` | New. ntfy alerts to the phone, only when the PC has been idle 2 min. |
 | `phone.html`, `src/phone/`, `vite.config.ts` | New. Putshi phone page (chat, approvals, music, timer, today, PC, lock/sleep), built with the rest. |
 | `src/island/hooks.ts` | Claude Code permission / finished also alert the phone. |
