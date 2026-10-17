@@ -403,8 +403,16 @@ function phoneSection(hasTopic: boolean): HTMLElement {
     body.append(row);
 
     if (info?.enabled && info.qrSvg && info.url) {
-      const qr = h("div", { style: "width:200px;height:200px;background:#fff;padding:0;border-radius:10px;overflow:hidden" });
+      // The code's size depends on the link's length: scale it to the box
+      // (the SVG has a viewBox) instead of letting the box crop it.
+      const qr = h("div", { style: "flex:0 0 260px;width:260px;height:260px;background:#fff;padding:8px;border-radius:12px" });
       qr.innerHTML = info.qrSvg;
+      const svgEl = qr.querySelector("svg");
+      if (svgEl) {
+        svgEl.removeAttribute("width");
+        svgEl.removeAttribute("height");
+        svgEl.style.cssText = "width:100%;height:100%;display:block";
+      }
       body.append(
         h("div", { style: "display:flex;gap:16px;align-items:center" },
           qr,
