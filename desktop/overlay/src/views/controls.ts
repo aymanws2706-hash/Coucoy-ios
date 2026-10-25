@@ -6,6 +6,7 @@ import { ICONS } from "./icons";
 import { Bridge } from "../core/bridge";
 import { State } from "../core/state";
 import type { ViewActions, ViewHost } from "./views";
+import { lyricsOn } from "./today";
 
 function mmss(secs: number): string {
   const s = Math.max(0, Math.floor(secs));
@@ -48,7 +49,36 @@ export function buildControls(actions: ViewActions): ViewHost {
   const prev = h("button", { class: "np-btn", title: "Previous" }, svg(ICONS.previous, 13));
   const play = h("button", { class: "np-btn big", title: "Play / pause" });
   const next = h("button", { class: "np-btn", title: "Next" }, svg(ICONS.next, 13));
-  const media = h("div", { class: "np" }, title, artist, bar, times, h("div", { class: "np-row" }, prev, play, next));
+  // Personal build: album art, ♥ for Spotify, and lyrics in the notch on/off.
+  const art = h("img", { class: "np-art", alt: "" }) as HTMLImageElement;
+  const like = h("button", { class: "np-btn np-like", title: "Like in Spotify", text: "♥" });
+  const lyr = h("button", { class: "np-btn np-lyr", title: "Lyrics in the notch", text: "♪" });
+  const media = h(
+    "div",
+    { class: "np" },
+    h("div", { class: "np-head" }, art, h("div", { class: "np-text" }, title, artist)),
+    bar,
+    times,
+    h("div", { class: "np-row" }, lyr, prev, play, next, like),
+  );
+  like.addEventListener("click", () => {
+    actions.blip();
+    Bridge.spotifyLike()
+      .then(() => {
+        like.classList.add("on");
+        window.setTimeout(() => like.classList.remove("on"), 1500);
+      })
+      .catch((err) => note(String(err).replace(/^Error:\s*/, "")));
+  });
+  lyr.addEventListener("click", () => {
+    actions.blip();
+    try {
+      localStorage.setItem("putshi.lyrics", lyricsOn() ? "off" : "on");
+    } catch {
+      /* stays as it was */
+    }
+    State.notify();
+  });
 
   const send = (action: "toggle" | "next" | "previous") => {
     actions.blip();
@@ -147,6 +177,14 @@ export function buildControls(actions: ViewActions): ViewHost {
       media.classList.toggle("empty", !p);
       if (p) {
         title.textContent = p.title;
+        if (p.art) {
+          if (art.src !== p.art) art.src = p.art;
+          art.style.display = "";
+        } else {
+          art.style.display = "none";
+        }
+        media.style.setProperty("--np", p.color ?? "transparent");
+        like.style.display = p.app.toLowerCase().includes("spotify") ? "" : "none";
         artist.textContent = [p.artist, p.app].filter(Boolean).join("  ·  ");
         clear(play);
         play.append(svg(p.playing ? ICONS.pause : ICONS.play, 15));
@@ -156,6 +194,8 @@ export function buildControls(actions: ViewActions): ViewHost {
         total.textContent = hasTime ? mmss(p.duration) : "";
       } else {
         title.textContent = "Nothing playing";
+        art.style.display = "none";
+        like.style.display = "none";
         artist.textContent = "Spotify, YouTube and other players show up here.";
         clear(play);
         play.append(svg(ICONS.play, 15));
@@ -163,6 +203,7 @@ export function buildControls(actions: ViewActions): ViewHost {
         times.style.visibility = "hidden";
       }
 
+      lyr.classList.toggle("on", lyricsOn());
       const c = State.controls;
       const sliding = document.activeElement === vol || document.activeElement === bright;
       if (c && !sliding) {

@@ -156,6 +156,12 @@ class AppState {
 
   /** Controls panel and notch: media, volume, Wi-Fi, mic/camera, downloads. */
   nowPlaying: NowPlaying | null = null;
+  /** Personal build: synced lyrics of the song playing ("title\u0001artist" → lines). */
+  lyrics: { key: string; lines: [number, string][] } | null = null;
+  /** Which briefing the brief view shows. */
+  briefKind: "morning" | "evening" = "morning";
+  /** Reminders still due today, for the briefing. */
+  remindersToday: string[] = [];
   /** When nowPlaying was read, to move the progress bar between samples. */
   nowPlayingAt = 0;
   controls: DeskControls | null = null;

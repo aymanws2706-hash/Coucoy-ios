@@ -6,6 +6,30 @@ import { State } from "../core/state";
 import type { CalendarEvent } from "../core/bridge";
 import type { ViewActions, ViewHost } from "./views";
 import { clock, pct } from "./pc";
+import { livePosition } from "./controls";
+
+/** Lyrics in the notch while a song plays (Controls › ♪ turns them off). */
+export function lyricsOn(): boolean {
+  try {
+    return localStorage.getItem("putshi.lyrics") !== "off";
+  } catch {
+    return true;
+  }
+}
+
+/** The lyric line being sung now, if lyrics for this song are loaded. */
+export function currentLyric(): string | null {
+  const np = State.nowPlaying;
+  const ly = State.lyrics;
+  if (!np || !ly || !lyricsOn() || ly.key !== `${np.title}\u0001${np.artist}`) return null;
+  const pos = livePosition() + 0.3;
+  let line: string | null = null;
+  for (const [t, text] of ly.lines) {
+    if (t > pos) break;
+    line = text;
+  }
+  return line || null;
+}
 
 /** WMO weather code → an emoji Windows draws in colour. */
 export function weatherIcon(code: number, isDay = true): string {
@@ -197,6 +221,11 @@ export function notchLine(): string {
   }
   const np = State.nowPlaying;
   if (np?.playing) {
+    const lyric = currentLyric();
+    if (lyric) {
+      parts.push(`♪ ${short(lyric, 44)}`);
+      return parts.join("  ·  ");
+    }
     parts.push(`♫ ${short(np.title, 22)}${np.artist ? " — " + short(np.artist, 14) : ""}`);
     return parts.join("  ·  ");
   }

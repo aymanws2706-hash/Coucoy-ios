@@ -432,6 +432,8 @@
 }
 
 .np-bar {
+  flex: none;
+  width: 100%;
   margin-top: 5px;
   height: 4px;
   border-radius: 2px;
@@ -935,4 +937,109 @@ button.ct-icon:hover {
 
 .drop-browse:hover {
   background: rgba(255, 255, 255, 0.18);
+}
+
+/* Now playing: album art, ♥ and ♪ (personal build). */
+.np-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.np-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.np-art {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  object-fit: cover;
+  box-shadow: 0 2px 12px -2px var(--np, transparent);
+}
+
+.np-like.on,
+.np-lyr.on {
+  color: #ff6b9a;
+}
+
+.np-lyr.on {
+  color: #8ea2ff;
+}
+
+.np-like.on {
+  animation: np-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes np-pop {
+  50% { transform: scale(1.4); }
+}
+
+/* The notch glows in the album's colour while a song plays. */
+html.glass #island.np-glow,
+html.no-glass #island.np-glow {
+  box-shadow:
+    inset 0 -1.5px 0 color-mix(in srgb, var(--np) 85%, transparent),
+    0 6px 22px -8px var(--np),
+    inset 1px 0 0 rgba(255, 255, 255, 0.07),
+    inset -1px 0 0 rgba(255, 255, 255, 0.07);
+  transition: box-shadow 600ms ease;
+}
+
+/* Morning briefing and evening recap. */
+.br-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 18px 0 112px;
+}
+
+.br-title {
+  font-size: 15px;
+  margin-bottom: 2px;
+}
+
+.br-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.br-line {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font: 500 12px var(--font);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: cv-fade 360ms ease-out both;
+}
+
+.br-line:nth-child(2) { animation-delay: 60ms; }
+.br-line:nth-child(3) { animation-delay: 120ms; }
+.br-line:nth-child(4) { animation-delay: 180ms; }
+.br-line:nth-child(5) { animation-delay: 240ms; }
+
+.br-line span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.br-line.dim {
+  opacity: 0.55;
+}
+
+.br-i {
+  flex: none;
+  width: 18px;
+  text-align: center;
+}
+
+.br-foot {
+  margin-top: 4px;
 }

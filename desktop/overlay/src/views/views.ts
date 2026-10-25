@@ -16,6 +16,7 @@ import { buildPc } from "./pc";
 import { buildToday } from "./today";
 import { buildClipboard, buildControls } from "./controls";
 import { buildConvert } from "./convert";
+import { buildBrief } from "./brief";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -568,6 +569,7 @@ export function buildViews(
   map.set("note", buildNote());
   map.set("settings", buildSettings(actions));
   map.set("prompt", buildPrompt(onChatHeightChange));
+  map.set("brief", buildBrief(actions));
   map.set("upload", buildUpload(actions));
   map.set("uploading", buildUploading());
   map.set("choose", buildChoose(actions));

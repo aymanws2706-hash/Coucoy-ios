@@ -17,7 +17,8 @@ import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from ".
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
-import { notchLine } from "../views/today";
+import { lyricsOn, notchLine } from "../views/today";
+import type { BotStateName } from "../core/layout";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
 
@@ -404,6 +405,81 @@ export class Island {
     State.notify();
   }
 
+  // ── Moments of the day (personal build) ─────────────────────────────────────
+
+  private briefChecked = 0;
+  private idleSecs = 0;
+  private lastYawn = 0;
+  private lyricsKey = "";
+
+  /**
+   * Every stats sample: reminders for the briefing, the morning briefing (first
+   * use after 5:00), the evening recap (first use after 21:00), yawns at night.
+   */
+  private async dayMoments() {
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    State.remindersToday = this.reminders.filter((r) => r.at <= end.getTime()).map((r) => r.text);
+
+    const now = Date.now();
+    if (now - this.briefChecked < 10_000) return;
+    this.briefChecked = now;
+    this.idleSecs = (await Bridge.idleSecs()) ?? 0;
+    if (State.paused) return;
+
+    const d = new Date();
+    const hr = d.getHours();
+    if ((hr >= 23 || hr < 5) && State.mode === "compact" && now - this.lastYawn > 15 * 60_000 && this.idleSecs < 60) {
+      this.lastYawn = now;
+      this.engine.triggerEmote("yawn", 2);
+    }
+
+    if (State.mode === "expanded") return;
+    const kind = hr >= 5 && hr < 12 ? "morning" : hr >= 21 ? "evening" : null;
+    if (!kind || this.idleSecs > 5) return;
+    const key = `putshi.brief.${kind}`;
+    const today = d.toDateString();
+    try {
+      if (localStorage.getItem(key) === today) return;
+      localStorage.setItem(key, today);
+    } catch {
+      return;
+    }
+    State.briefKind = kind;
+    this.engine.triggerEmote(kind === "morning" ? "happy" : "proud", 2.5);
+    Sound.play("peek");
+    this.alert("brief");
+  }
+
+  /** The droplet's mood when nothing else is going on. */
+  private moodState(): BotStateName {
+    const s = State.effectiveState;
+    if (s !== "idle") return s;
+    const st = State.stats;
+    // Worried: low battery or a hot, busy CPU — tired eyes and a drop of sweat.
+    if (st && st.battery != null && !st.charging && st.battery <= 15) return "ratelimit";
+    if (this.busyCpu >= 10) return "ratelimit";
+    // Sleepy: late at night, left alone.
+    const hr = new Date().getHours();
+    if ((hr >= 23 || hr < 5) && State.mode !== "expanded" && this.idleSecs > 180) return "sleeping";
+    return "idle";
+  }
+
+  /** Lyrics for the song playing, once per song, when lyrics are on. */
+  private loadLyrics() {
+    const np = State.nowPlaying;
+    const key = np ? `${np.title}\u0001${np.artist}` : "";
+    if (!np || !lyricsOn() || key === this.lyricsKey) return;
+    this.lyricsKey = key;
+    State.lyrics = null;
+    void Bridge.lyrics(np.artist, np.title, np.duration).then((lines) => {
+      if (this.lyricsKey === key && lines?.length) {
+        State.lyrics = { key, lines };
+        State.notify();
+      }
+    });
+  }
+
   // ── Desktop stats (personal build) ──────────────────────────────────────────
 
   /**
@@ -429,6 +505,8 @@ export class Island {
       State.nowPlaying = playing ?? null;
       State.nowPlayingAt = performance.now();
       if (activity) State.activity = activity;
+      this.loadLyrics();
+      void this.dayMoments();
       if (State.mode === "expanded" && State.view === "controls") {
         const c = await Bridge.deskControls(false);
         // Brightness is read once when the panel opens (it's slow); keep it.
@@ -465,6 +543,16 @@ export class Island {
     window.setInterval(() => void day(), 5 * 60_000);
     // The settings window saved a city or a calendar link.
     void onEvent<null>("day-changed", () => void day(true));
+
+    // Revit: in use for a long time since the project was last saved.
+    void onEvent<{ project: string; minutes: number }>("revit-save", (p) => {
+      this.alerted.delete("revit");
+      this.raise("revit", true, `💾 Save ${p.project} — ${p.minutes} min of work since the last save`);
+    });
+    // Lyrics move on faster than the 2 s samples.
+    window.setInterval(() => {
+      if (State.mode === "compact" && State.lyrics && State.nowPlaying?.playing) State.notify();
+    }, 700);
   }
 
   // ── FSM ─────────────────────────────────────────────────────────────────────
@@ -1183,7 +1271,12 @@ export class Island {
     }
 
     syncMiniBotStates(State.tasks);
-    this.engine.setState(State.effectiveState);
+    this.engine.setState(this.moodState());
+    // Spotify & co: the notch glows in the album's colour while a song plays.
+    const np = State.nowPlaying;
+    const glow = State.mode === "compact" && !!np?.playing && !!np.color;
+    this.islandEl.classList.toggle("np-glow", glow);
+    if (glow) this.islandEl.style.setProperty("--np", np!.color!);
   }
 
   /** Applies settings coming from Rust at boot. */

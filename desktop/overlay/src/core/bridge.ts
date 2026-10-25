@@ -134,6 +134,12 @@ export const Bridge = {
   addReminder: (text: string, at: number) => call<void>("add_reminder", { text, at }),
   localTimeMs: (text: string) => call<number | null>("local_time_ms", { text }),
 
+  usageToday: () => call<UsageDay>("usage_today"),
+  idleSecs: () => call<number>("idle_secs"),
+  whatsappRecent: () => call<{ chat: string; text: string; at: number }[] | null>("whatsapp_recent"),
+  lyrics: (artist: string, title: string, duration: number) =>
+    call<[number, string][] | null>("lyrics", { artist, title, duration }),
+  spotifyLike: () => callOrThrow<void>("spotify_like"),
   pickFile: () => call<string | null>("pick_file"),
   convertTargets: (path: string) => call<{ ext: string; label: string }[]>("convert_targets", { path }),
   /** The new file's path; rejects with "NEEDS_FFMPEG" for audio/video without ffmpeg. */
@@ -181,6 +187,16 @@ export interface NowPlaying {
   /** Seconds. */
   position: number;
   duration: number;
+  /** Personal build: album art colour "#rrggbb" and a small data: URL of it. */
+  color?: string | null;
+  art?: string | null;
+}
+
+export interface UsageDay {
+  apps: Record<string, number>;
+  revit: Record<string, number>;
+  first: string;
+  last: string;
 }
 
 export interface DeskControls {

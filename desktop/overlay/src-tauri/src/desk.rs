@@ -19,6 +19,10 @@ pub struct NowPlaying {
     /// Seconds; 0 when the app doesn't say.
     pub position: f64,
     pub duration: f64,
+    /// The album art's main colour, "#rrggbb", for the notch glow.
+    pub color: Option<String>,
+    /// The album art, small, as a data: URL.
+    pub art: Option<String>,
 }
 
 #[derive(Serialize, Clone, Default)]
@@ -70,6 +74,82 @@ pub fn downloads() -> Vec<Download> {
         .collect();
     out.sort_by(|a, b| b.bytes.cmp(&a.bytes));
     out.truncate(3);
+    out
+}
+
+/// The main colour of a picture (skips greys so a white border doesn't win),
+/// and a 96 px JPEG copy as a data: URL.
+pub fn art_summary(bytes: &[u8]) -> Option<(String, String)> {
+    let img = image::load_from_memory(bytes).ok()?;
+    let small = img.thumbnail(32, 32).to_rgb8();
+    let (mut r, mut g, mut b, mut n) = (0f64, 0f64, 0f64, 0f64);
+    let (mut ar, mut ag, mut ab) = (0f64, 0f64, 0f64);
+    for p in small.pixels() {
+        let [pr, pg, pb] = p.0.map(|c| c as f64);
+        ar += pr;
+        ag += pg;
+        ab += pb;
+        let max = pr.max(pg).max(pb);
+        let min = pr.min(pg).min(pb);
+        let sat = if max > 0.0 { (max - min) / max } else { 0.0 };
+        if sat > 0.25 && max > 50.0 {
+            let w = sat * sat;
+            r += pr * w;
+            g += pg * w;
+            b += pb * w;
+            n += w;
+        }
+    }
+    let count = (small.width() * small.height()).max(1) as f64;
+    let (r, g, b) = if n > 0.5 { (r / n, g / n, b / n) } else { (ar / count, ag / count, ab / count) };
+    let color = format!("#{:02x}{:02x}{:02x}", r as u8, g as u8, b as u8);
+    let mut jpeg = Vec::new();
+    img.thumbnail(96, 96)
+        .to_rgb8()
+        .write_to(&mut std::io::Cursor::new(&mut jpeg), image::ImageFormat::Jpeg)
+        .ok()?;
+    Some((color, format!("data:image/jpeg;base64,{}", crate::claude::base64_for(&jpeg))))
+}
+
+/// Synced lyrics from lrclib.net (free, no account): (seconds, line).
+pub async fn lyrics(artist: &str, title: &str, duration: f64) -> Option<Vec<(f64, String)>> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(8))
+        .user_agent("Putshi (personal build of Coucou)")
+        .build()
+        .ok()?;
+    let mut req = client.get("https://lrclib.net/api/get").query(&[("artist_name", artist), ("track_name", title)]);
+    if duration > 0.0 {
+        req = req.query(&[("duration", format!("{}", duration.round() as u64))]);
+    }
+    let mut v: serde_json::Value = req.send().await.ok()?.json().await.ok()?;
+    if v.get("syncedLyrics").and_then(|s| s.as_str()).is_none() {
+        // Not found with the exact length: search instead.
+        let list: Vec<serde_json::Value> = client
+            .get("https://lrclib.net/api/search")
+            .query(&[("artist_name", artist), ("track_name", title)])
+            .send()
+            .await
+            .ok()?
+            .json()
+            .await
+            .ok()?;
+        v = list.into_iter().find(|x| x.get("syncedLyrics").and_then(|s| s.as_str()).is_some())?;
+    }
+    let text = v.get("syncedLyrics")?.as_str()?;
+    Some(parse_lrc(text))
+}
+
+/// "[01:02.34] line" → (62.34, "line").
+pub fn parse_lrc(text: &str) -> Vec<(f64, String)> {
+    let mut out = Vec::new();
+    for line in text.lines() {
+        let Some(rest) = line.strip_prefix('[') else { continue };
+        let Some((stamp, words)) = rest.split_once(']') else { continue };
+        let Some((m, s)) = stamp.split_once(':') else { continue };
+        let (Ok(m), Ok(s)) = (m.trim().parse::<f64>(), s.trim().parse::<f64>()) else { continue };
+        out.push((m * 60.0 + s, words.trim().to_string()));
+    }
     out
 }
 
@@ -133,7 +213,109 @@ mod win {
                 a.trim_end_matches(".exe").to_string()
             })
             .unwrap_or_default();
-        Some(NowPlaying { title, artist, app, playing, position, duration })
+        let key = format!("{title}\u{1}{artist}");
+        let (color, art) = {
+            let cached = ART.lock().unwrap().clone();
+            match cached {
+                Some((k, c, a)) if k == key => (c, a),
+                _ => {
+                    let got = thumbnail(&props).and_then(|b| art_summary(&b));
+                    let (c, a) = got.map(|(c, a)| (Some(c), Some(a))).unwrap_or((None, None));
+                    *ART.lock().unwrap() = Some((key, c.clone(), a.clone()));
+                    (c, a)
+                }
+            }
+        };
+        Some(NowPlaying { title, artist, app, playing, position, duration, color, art })
+    }
+
+    /// The last song's art, so it's read once per song, not every 2 s.
+    static ART: std::sync::Mutex<Option<(String, Option<String>, Option<String>)>> = std::sync::Mutex::new(None);
+
+    fn thumbnail(props: &windows::Media::Control::GlobalSystemMediaTransportControlsSessionMediaProperties) -> Option<Vec<u8>> {
+        use windows::Storage::Streams::DataReader;
+        let stream = props.Thumbnail().ok()?.OpenReadAsync().ok()?.get().ok()?;
+        let size = stream.Size().ok()? as u32;
+        if size == 0 || size > 8_000_000 {
+            return None;
+        }
+        let reader = DataReader::CreateDataReader(&stream.GetInputStreamAt(0).ok()?).ok()?;
+        reader.LoadAsync(size).ok()?.get().ok()?;
+        let mut buf = vec![0u8; size as usize];
+        reader.ReadBytes(&mut buf).ok()?;
+        Some(buf)
+    }
+
+    /// Likes the current song in Spotify through its own shortcut, Alt+Shift+B:
+    /// brings Spotify's window forward for a moment, then gives the focus back.
+    pub fn spotify_like() -> Result<(), String> {
+        use windows::Win32::Foundation::{HWND, LPARAM};
+        use windows::Win32::UI::Input::KeyboardAndMouse::{
+            SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_MENU, VK_SHIFT,
+        };
+        use windows::Win32::UI::WindowsAndMessaging::{
+            EnumWindows, GetForegroundWindow, GetWindowTextLengthW, GetWindowThreadProcessId, IsIconic,
+            IsWindowVisible, SetForegroundWindow, ShowWindow, SW_RESTORE,
+        };
+
+        let pids: Vec<u32> = {
+            let mut sys = sysinfo::System::new();
+            sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+            sys.processes()
+                .values()
+                .filter(|p| p.name().to_string_lossy().eq_ignore_ascii_case("Spotify.exe"))
+                .map(|p| p.pid().as_u32())
+                .collect()
+        };
+        if pids.is_empty() {
+            return Err("Spotify isn't open.".into());
+        }
+        struct Find {
+            pids: Vec<u32>,
+            found: isize,
+        }
+        unsafe extern "system" fn each(hwnd: HWND, lp: LPARAM) -> windows::core::BOOL {
+            let f = unsafe { &mut *(lp.0 as *mut Find) };
+            let mut pid = 0u32;
+            unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid)) };
+            if f.pids.contains(&pid) && unsafe { IsWindowVisible(hwnd) }.as_bool() && unsafe { GetWindowTextLengthW(hwnd) } > 0 {
+                f.found = hwnd.0 as isize;
+                return false.into();
+            }
+            true.into()
+        }
+        let mut f = Find { pids, found: 0 };
+        unsafe {
+            let _ = EnumWindows(Some(each), LPARAM(&mut f as *mut Find as isize));
+        }
+        if f.found == 0 {
+            return Err("Spotify's window is closed (it's only in the tray). Open it once, then try again.".into());
+        }
+        let spotify = HWND(f.found as *mut _);
+        let key = |vk: VIRTUAL_KEY, up: bool| INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT { wVk: vk, dwFlags: if up { KEYEVENTF_KEYUP } else { Default::default() }, ..Default::default() },
+            },
+        };
+        unsafe {
+            let previous = GetForegroundWindow();
+            // Holding Alt lets this app hand the focus to another window.
+            SendInput(&[key(VK_MENU, false)], std::mem::size_of::<INPUT>() as i32);
+            if IsIconic(spotify).as_bool() {
+                let _ = ShowWindow(spotify, SW_RESTORE);
+            }
+            let _ = SetForegroundWindow(spotify);
+            std::thread::sleep(std::time::Duration::from_millis(180));
+            let b = VIRTUAL_KEY(b'B' as u16);
+            SendInput(&[key(VK_SHIFT, false), key(b, false), key(b, true), key(VK_SHIFT, true)], std::mem::size_of::<INPUT>() as i32);
+            SendInput(&[key(VK_MENU, true)], std::mem::size_of::<INPUT>() as i32);
+            std::thread::sleep(std::time::Duration::from_millis(150));
+            if !previous.0.is_null() {
+                let _ = SetForegroundWindow(previous);
+            }
+        }
+        Ok(())
     }
 
     /// "toggle", "next" or "previous".
@@ -337,6 +519,9 @@ mod other {
     }
     pub fn clipboard_seq() -> u32 {
         0
+    }
+    pub fn spotify_like() -> Result<(), String> {
+        Err("Spotify likes are a Windows feature.".into())
     }
 }
 

@@ -178,6 +178,13 @@ pub fn definitions() -> Vec<Value> {
             }, "required": ["action"] }
         }),
         json!({
+            "name": "time_report",
+            "description": "How the user spent their PC time: hours at the PC per day, per app, and per Revit project (from the window title), for the last N days. Use for 'how long did I work on the villa this week'.",
+            "input_schema": { "type": "object", "properties": {
+                "days": { "type": "integer", "description": "1 = today, 7 = the last week. Up to 35." }
+            } }
+        }),
+        json!({
             "name": "whatsapp_messages",
             "description": "The user's recent WhatsApp messages as Windows' notifications show them: who wrote (person or group) and the text. Only what's still in the notification centre or arrived while Putshi was running. Works only if WhatsApp is switched on in Settings › Awareness.",
             "input_schema": { "type": "object", "properties": {} }
@@ -322,6 +329,11 @@ pub async fn run(app: &AppHandle, name: &str, input: &Value) -> Result<String, S
             })
             .await
             .map_err(|e| e.to_string())?
+        }
+        "time_report" => {
+            let days = input.get("days").and_then(Value::as_u64).unwrap_or(1) as usize;
+            step(app, "Checking where the time went");
+            Ok(crate::usage::report(app, days))
         }
         "whatsapp_messages" => {
             if !app.state::<crate::awareness::Awareness>().config().whatsapp {

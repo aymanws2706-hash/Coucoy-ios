@@ -25,6 +25,7 @@ mod voice;
 mod whatsapp;
 mod elevation;
 mod dropcatch;
+mod usage;
 mod tray;
 
 use std::process::Command;
@@ -600,6 +601,39 @@ fn open_settings_window(app: AppHandle) {
     show_settings_window(&app);
 }
 
+/// Personal build: today's time per app and Revit project, for the evening recap.
+#[tauri::command]
+fn usage_today(usage: State<usage::Usage>) -> usage::Day {
+    usage.today()
+}
+
+/// Personal build: seconds since the last input (morning briefing waits for you).
+#[tauri::command]
+fn idle_secs() -> u64 {
+    awareness::idle_secs()
+}
+
+/// Personal build: recent WhatsApp messages for the briefing, if reading is on.
+#[tauri::command]
+fn whatsapp_recent(app: AppHandle) -> Option<Vec<whatsapp::Message>> {
+    if !app.state::<awareness::Awareness>().config().whatsapp {
+        return None;
+    }
+    app.state::<whatsapp::WhatsApp>().recent().ok()
+}
+
+/// Personal build: synced lyrics from lrclib.net for the notch.
+#[tauri::command]
+async fn lyrics(artist: String, title: String, duration: f64) -> Option<Vec<(f64, String)>> {
+    desk::lyrics(&artist, &title, duration).await
+}
+
+/// Personal build: likes the song playing in Spotify (its Alt+Shift+B shortcut).
+#[tauri::command]
+async fn spotify_like() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(desk::spotify_like).await.map_err(|e| e.to_string())?
+}
+
 /// Personal build: the Windows file dialog, for when dragging a file in isn't possible.
 #[tauri::command]
 async fn pick_file() -> Option<String> {
@@ -646,6 +680,7 @@ pub fn run() {
         .manage(jobs::Jobs::default())
         .manage(awareness::Awareness::default())
         .manage(whatsapp::WhatsApp::default())
+        .manage(usage::Usage::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -699,6 +734,11 @@ pub fn run() {
             set_glass,
             awareness_get,
             pick_file,
+            usage_today,
+            idle_secs,
+            whatsapp_recent,
+            lyrics,
+            spotify_like,
             awareness_set,
             add_reminder,
             local_time_ms,
@@ -717,6 +757,7 @@ pub fn run() {
             awareness::start(handle.clone());
             // Dropped files, the classic way, for when the webview refuses them.
             dropcatch::start(&handle);
+            usage::start(handle.clone());
             // The phone link comes back on by itself once it has been paired.
             if phone::token().is_some() {
                 phone::start(handle.clone());

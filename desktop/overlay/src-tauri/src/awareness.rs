@@ -326,6 +326,16 @@ Write text and why in the same language as the conversation. Pick a sensible tim
     });
 }
 
+/// The app (exe name) and window title in front.
+pub fn foreground_app() -> Option<(String, String)> {
+    imp::foreground()
+}
+
+/// Seconds since the last key or mouse input.
+pub fn idle_secs() -> u64 {
+    imp::idle_secs()
+}
+
 // ── Windows: what's in front, idle time, screen capture ──────────────────────
 
 #[cfg(windows)]
