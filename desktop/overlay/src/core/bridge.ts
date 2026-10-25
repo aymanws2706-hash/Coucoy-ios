@@ -134,6 +134,12 @@ export const Bridge = {
   addReminder: (text: string, at: number) => call<void>("add_reminder", { text, at }),
   localTimeMs: (text: string) => call<number | null>("local_time_ms", { text }),
 
+  convertTargets: (path: string) => call<{ ext: string; label: string }[]>("convert_targets", { path }),
+  /** The new file's path; rejects with "NEEDS_FFMPEG" for audio/video without ffmpeg. */
+  convertFile: (path: string, to: string) => callOrThrow<string>("convert_file", { path, to }),
+  installFfmpeg: () => callOrThrow<void>("install_ffmpeg"),
+  openFile: (path: string, reveal = false) => call<void>("open_file", { path, reveal }),
+
   /** Desktop info for the notch and the PC view. */
   systemStats: () => call<SystemStats>("system_stats"),
 

@@ -4,6 +4,7 @@ mod agent;
 mod awareness;
 mod claude;
 mod clip;
+mod convert;
 mod day;
 mod glass;
 mod jobs;
@@ -326,6 +327,49 @@ fn local_time_ms(text: String) -> Option<i64> {
     day::local_to_epoch_ms(&text)
 }
 
+// ── Convert (personal build) ─────────────────────────────────────────────────
+
+#[tauri::command]
+fn convert_targets(path: String) -> Vec<convert::Target> {
+    convert::targets(&path)
+}
+
+/// Returns the new file's path. "NEEDS_FFMPEG" means: offer to install it.
+#[tauri::command]
+async fn convert_file(path: String, to: String) -> Result<String, String> {
+    blocking(move || convert::convert(&path, &to)).await?
+}
+
+#[tauri::command]
+async fn install_ffmpeg() -> Result<(), String> {
+    blocking(convert::install_ffmpeg).await?
+}
+
+/// Opens a file with its usual app, or shows it selected in Explorer.
+#[tauri::command]
+fn open_file(path: String, reveal: bool) {
+    #[cfg(windows)]
+    {
+        let mut cmd = Command::new(if reveal { "explorer" } else { "cmd" });
+        if reveal {
+            cmd.arg(format!("/select,{path}"));
+        } else {
+            cmd.args(["/C", "start", "", &path]);
+        }
+        platform::no_console(&mut cmd);
+        let _ = cmd.spawn();
+    }
+    #[cfg(not(windows))]
+    {
+        let target = if reveal {
+            std::path::Path::new(&path).parent().map(|p| p.display().to_string()).unwrap_or(path)
+        } else {
+            path
+        };
+        let _ = Command::new("xdg-open").arg(target).spawn();
+    }
+}
+
 /// Liquid Glass blur behind the island (Windows acrylic). Returns whether it took.
 #[tauri::command]
 fn set_glass(app: AppHandle, on: bool) -> bool {
@@ -642,6 +686,10 @@ pub fn run() {
             awareness_set,
             add_reminder,
             local_time_ms,
+            convert_targets,
+            convert_file,
+            install_ffmpeg,
+            open_file,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

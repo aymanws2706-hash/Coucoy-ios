@@ -27,6 +27,7 @@ full copy of Coucou's file with these changes:
 | `public/sw.js`, `src/phone/offline.ts` | Phone offline mode: the page is kept on the phone; with the PC off it chats with Claude directly, queues tasks for the PC, and sets reminders through ntfy. |
 | Reminders | `remind_me` on PC and phone: notch at the time plus a scheduled ntfy alert (works with the PC off, up to 3 days ahead). |
 | `src-tauri/src/awareness.rs` | New. Awareness (opt-in, three levels: window titles, messaging-app windows, whole screen every 15 min): pictures go to Claude Haiku to spot commitments and are never saved; ignore list and private windows skipped; Pause stops it. Suggestions open a "Putshi noticed" card with Remind me / In 1 hour / Not now. |
+| `src-tauri/src/convert.rs`, `src/views/convert.ts`, `src/views/upload.ts`, `src/upload/canvas.ts` | New. Convert: drop a file › Convert… › pick a format. Pictures with the `image` crate (HEIC/HEIF through Windows WIC, image → PDF written directly), Office documents through Office COM (LibreOffice fallback), audio/video through ffmpeg (installable from the card with winget). Saved next to the original, never overwriting. Also a `convert_file` chat tool. Unit-tested. |
 | `src-tauri/src/push.rs` | New. ntfy alerts to the phone, only when the PC has been idle 2 min. |
 | `phone.html`, `src/phone/`, `vite.config.ts` | New. Putshi phone page (chat, approvals, music, timer, today, PC, lock/sleep), built with the rest. |
 | `src/island/hooks.ts` | Claude Code permission / finished also alert the phone. |

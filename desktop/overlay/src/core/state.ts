@@ -134,6 +134,10 @@ class AppState {
 
   promptContext: PromptContext | null = null;
   droppedFile: { name: string; path: string } | null = null;
+  /** Personal build: where the dropped file really lives (not the inbox copy). */
+  droppedOriginal: string | null = null;
+  /** Text to put in the chat field next time it opens. */
+  promptDraft: string | null = null;
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];

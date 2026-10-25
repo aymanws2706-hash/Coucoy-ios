@@ -15,6 +15,7 @@ import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations
 import { buildPc } from "./pc";
 import { buildToday } from "./today";
 import { buildClipboard, buildControls } from "./controls";
+import { buildConvert } from "./convert";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -551,6 +552,7 @@ export function buildViews(
   const map = new Map<IslandViewName, ViewHost>();
   map.set("today", buildToday(actions));
   map.set("suggest", buildSuggest(actions));
+  map.set("convert", buildConvert(actions));
   map.set("pc", buildPc(actions));
   map.set("controls", buildControls(actions));
   map.set("clipboard", buildClipboard(actions));

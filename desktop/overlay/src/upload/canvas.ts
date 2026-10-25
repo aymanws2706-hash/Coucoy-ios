@@ -64,6 +64,8 @@ export interface UploadCanvasActions {
   ask(): void;
   /** Secondary button. */
   cancel(): void;
+  /** Personal build: change the file's type. */
+  convert(): void;
 }
 
 export class UploadCanvas {
@@ -93,7 +95,7 @@ export class UploadCanvas {
     };
     this.overlay = document.createElement("div");
     this.overlay.id = "upload-overlay";
-    this.overlay.append(mk(114, 168, actions.ask), mk(290, 120, actions.cancel));
+    this.overlay.append(mk(114, 150, actions.ask), mk(272, 104, actions.convert), mk(384, 84, actions.cancel));
 
     this.el = document.createElement("div");
     this.el.id = "upload-layer";
@@ -279,14 +281,20 @@ export class UploadCanvas {
     text(ctx, "What do you want to do with it?", 114, 100, `400 12.5px ${FONT}`, "#9398A1");
 
     ctx.fillStyle = "#F5F6F8";
-    rr(ctx, 114, 113, 168, 26, 13);
+    rr(ctx, 114, 113, 150, 26, 13);
     ctx.fill();
-    text(ctx, "Ask a question about it", 198, 126, `500 12.5px ${FONT}`, "#0B0C0E", "center");
+    text(ctx, "Ask about it", 189, 126, `500 12.5px ${FONT}`, "#0B0C0E", "center");
+
+    // Personal build: Convert, between Ask and Cancel.
+    ctx.fillStyle = "rgba(255,255,255,0.16)";
+    rr(ctx, 272, 113, 104, 26, 13);
+    ctx.fill();
+    text(ctx, "Convert…", 324, 126, `500 12.5px ${FONT}`, "#F5F6F8", "center");
 
     ctx.fillStyle = "rgba(255,255,255,0.09)";
-    rr(ctx, 290, 113, 120, 26, 13);
+    rr(ctx, 384, 113, 84, 26, 13);
     ctx.fill();
-    text(ctx, "Cancel", 350, 126, `500 12.5px ${FONT}`, "#F1F2F4", "center");
+    text(ctx, "Cancel", 426, 126, `500 12.5px ${FONT}`, "#F1F2F4", "center");
     ctx.restore();
   }
 

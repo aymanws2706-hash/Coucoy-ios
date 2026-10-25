@@ -154,6 +154,14 @@ pub fn definitions() -> Vec<Value> {
             }, "required": ["instruction", "when"] }
         }),
         json!({
+            "name": "convert_file",
+            "description": "Change a file's type: pictures (incl. iPhone HEIC) to JPG/PNG/WebP/PDF/ICO, Word/Excel/PowerPoint to and from PDF, CSV/XLSX, audio/video to MP3/MP4/WAV/M4A/GIF. Saves next to the original and returns the new path.",
+            "input_schema": { "type": "object", "properties": {
+                "path": { "type": "string" },
+                "to": { "type": "string", "description": "Target extension, like pdf, jpg, mp3, docx." }
+            }, "required": ["path", "to"] }
+        }),
+        json!({
             "name": "set_timer",
             "description": "Start a countdown shown in the notch; Putshi rings when it ends. Use for 'remind me in 20 minutes…' or focus sessions.",
             "input_schema": { "type": "object", "properties": {
@@ -258,6 +266,16 @@ pub async fn run(app: &AppHandle, name: &str, input: &Value) -> Result<String, S
             let jobs = app.state::<crate::jobs::Jobs>();
             jobs.add_local(&s("instruction"), at)?;
             Ok(format!("Scheduled for {}.", crate::day::local_label(at)))
+        }
+        "convert_file" => {
+            let path = expand(&s("path")).display().to_string();
+            let to = s("to");
+            step(app, &format!("Converting to {}", to.to_uppercase()));
+            match tokio::task::spawn_blocking(move || crate::convert::convert(&path, &to)).await.map_err(|e| e.to_string())? {
+                Ok(out) => Ok(format!("Saved {out}")),
+                Err(e) if e == "NEEDS_FFMPEG" => Err("ffmpeg isn't installed; it's needed for audio and video. Offer to install it with run_command: winget install --id Gyan.FFmpeg -e".into()),
+                Err(e) => Err(e),
+            }
         }
         "set_timer" => {
             let minutes = input.get("minutes").and_then(Value::as_f64).unwrap_or(0.0);

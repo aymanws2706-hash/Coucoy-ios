@@ -202,6 +202,10 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       input.disabled = sending;
     },
     focus() {
+      if (State.promptDraft) {
+        input.value = State.promptDraft;
+        State.promptDraft = null;
+      }
       input.focus();
       input.select();
     },

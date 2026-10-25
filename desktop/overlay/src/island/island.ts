@@ -218,6 +218,7 @@ export class Island {
         this.setView("prompt");
       },
       cancel: () => this.setView(State.defaultView()),
+      convert: () => this.setView("convert"),
     });
 
     this.clipEl = h(
@@ -639,6 +640,8 @@ export class Island {
    */
   private swallow(path: string) {
     const name = path.split(/[\\/]/).pop() || "file";
+    // Personal build: Convert saves next to where the file came from.
+    State.droppedOriginal = path;
     State.droppedFile = { name, path };
     State.promptContext = { kind: "file", name, path };
     State.chatHistory = [];
