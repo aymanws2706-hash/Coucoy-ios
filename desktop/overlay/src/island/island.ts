@@ -187,6 +187,11 @@ export class Island {
       startTimer: (minutes, label) => this.startTimer(minutes, label),
       stopTimer: () => this.stopTimer(),
       blip: () => Sound.play("blip"),
+      pickFile: () => {
+        void Bridge.pickFile().then((path) => {
+          if (path) this.swallow(path);
+        });
+      },
     };
 
     this.decide = actions.decide;

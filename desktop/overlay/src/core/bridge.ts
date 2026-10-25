@@ -134,6 +134,7 @@ export const Bridge = {
   addReminder: (text: string, at: number) => call<void>("add_reminder", { text, at }),
   localTimeMs: (text: string) => call<number | null>("local_time_ms", { text }),
 
+  pickFile: () => call<string | null>("pick_file"),
   convertTargets: (path: string) => call<{ ext: string; label: string }[]>("convert_targets", { path }),
   /** The new file's path; rejects with "NEEDS_FFMPEG" for audio/video without ffmpeg. */
   convertFile: (path: string, to: string) => callOrThrow<string>("convert_file", { path, to }),

@@ -27,7 +27,7 @@ function dashedFrame(): SVGSVGElement {
   return el;
 }
 
-export function buildUpload(): ViewHost {
+export function buildUpload(actions: ViewActions): ViewHost {
   const frame = dashedFrame();
   const title = h("div", { class: "drop-title", text: "Drop your files here" });
   const tags = h(
@@ -39,7 +39,14 @@ export function buildUpload(): ViewHost {
     "div",
     { class: "card drop-card" },
     frame,
-    h("div", { class: "drop-body" }, title, tags),
+    h(
+      "div",
+      { class: "drop-body" },
+      title,
+      tags,
+      // Personal build: for when dragging isn't possible.
+      h("button", { class: "drop-browse", text: "or choose a file…", onclick: () => actions.pickFile() }),
+    ),
   );
   const el = h("div", { class: "view" }, card);
 

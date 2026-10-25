@@ -23,6 +23,7 @@ mod settings;
 mod sysstats;
 mod voice;
 mod whatsapp;
+mod elevation;
 mod tray;
 
 use std::process::Command;
@@ -598,7 +599,18 @@ fn open_settings_window(app: AppHandle) {
     show_settings_window(&app);
 }
 
+/// Personal build: the Windows file dialog, for when dragging a file in isn't possible.
+#[tauri::command]
+async fn pick_file() -> Option<String> {
+    tauri::async_runtime::spawn_blocking(elevation::pick_file).await.ok().flatten()
+}
+
 pub fn run() {
+    // Personal build: started as administrator (e.g. by the installer), Windows
+    // blocks files dragged in from Explorer. Start again as the normal user.
+    if elevation::relaunch_unelevated() {
+        return;
+    }
     platform::prepare_environment();
     let loaded = settings::load();
     let gate = Arc::new(PollGate::new());
@@ -685,6 +697,7 @@ pub fn run() {
             push_notify,
             set_glass,
             awareness_get,
+            pick_file,
             awareness_set,
             add_reminder,
             local_time_ms,
