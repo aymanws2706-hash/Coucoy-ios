@@ -151,6 +151,7 @@ export interface AwarenessConfig {
   titles: boolean;
   apps: boolean;
   screen: boolean;
+  whatsapp: boolean;
   watch: string[];
   ignore: string[];
 }

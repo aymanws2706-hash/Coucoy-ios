@@ -178,6 +178,19 @@ pub fn definitions() -> Vec<Value> {
             }, "required": ["action"] }
         }),
         json!({
+            "name": "whatsapp_messages",
+            "description": "The user's recent WhatsApp messages as Windows' notifications show them: who wrote (person or group) and the text. Only what's still in the notification centre or arrived while Putshi was running. Works only if WhatsApp is switched on in Settings › Awareness.",
+            "input_schema": { "type": "object", "properties": {} }
+        }),
+        json!({
+            "name": "whatsapp_send",
+            "description": "Write a WhatsApp message for the user: opens WhatsApp on the PC with the text already typed, and the user presses Send themselves. With the person's number (international, like +212612345678) it opens their chat; without it, WhatsApp asks who to send to. Look in memory for saved numbers; offer to remember new ones.",
+            "input_schema": { "type": "object", "properties": {
+                "text": { "type": "string" },
+                "phone": { "type": "string", "description": "Optional number with country code." }
+            }, "required": ["text"] }
+        }),
+        json!({
             "name": "open",
             "description": "Open a file, folder, app or web address on this PC, like double-clicking it. The user approves first, except for http(s) links.",
             "input_schema": { "type": "object", "properties": {
@@ -309,6 +322,18 @@ pub async fn run(app: &AppHandle, name: &str, input: &Value) -> Result<String, S
             })
             .await
             .map_err(|e| e.to_string())?
+        }
+        "whatsapp_messages" => {
+            if !app.state::<crate::awareness::Awareness>().config().whatsapp {
+                return Err("WhatsApp reading is off. The user can switch it on in Settings › Awareness › WhatsApp messages.".into());
+            }
+            step(app, "Checking WhatsApp");
+            let wa = app.state::<crate::whatsapp::WhatsApp>();
+            wa.recent().map(|list| crate::whatsapp::describe(&list))
+        }
+        "whatsapp_send" => {
+            step(app, "Opening WhatsApp");
+            crate::whatsapp::draft(&s("phone"), &s("text"))
         }
         "open" => {
             let target = s("target");

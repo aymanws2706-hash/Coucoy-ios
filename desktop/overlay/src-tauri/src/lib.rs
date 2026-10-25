@@ -22,6 +22,7 @@ mod secrets;
 mod settings;
 mod sysstats;
 mod voice;
+mod whatsapp;
 mod tray;
 
 use std::process::Command;
@@ -631,6 +632,7 @@ pub fn run() {
         .manage(phone::Phone::default())
         .manage(jobs::Jobs::default())
         .manage(awareness::Awareness::default())
+        .manage(whatsapp::WhatsApp::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,

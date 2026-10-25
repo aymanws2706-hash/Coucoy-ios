@@ -491,6 +491,11 @@ function awarenessSection(): HTMLElement {
         toggle(cfg.screen, (v) => { cfg.screen = v; void save(); }),
         h("span", { class: "hint", text: "a look every 15 min while you're using the PC" }),
       ),
+      h("div", { class: "row" },
+        h("label", { text: "WhatsApp messages" }),
+        toggle(cfg.whatsapp, (v) => { cfg.whatsapp = v; void save(); }),
+        h("span", { class: "hint", text: "reads new WhatsApp notifications on this PC; Putshi never logs in to WhatsApp" }),
+      ),
     );
 
     const watch = h("input", { type: "text", style: "flex:1 1 auto;min-width:0", value: cfg.watch.join(", ") }) as HTMLInputElement;

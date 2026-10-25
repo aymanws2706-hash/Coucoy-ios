@@ -31,6 +31,8 @@ pub struct Config {
     pub titles: bool,
     pub apps: bool,
     pub screen: bool,
+    /// New WhatsApp messages, read from Windows' notifications.
+    pub whatsapp: bool,
     /// Process names (without .exe) or words in a window title.
     pub watch: Vec<String>,
     pub ignore: Vec<String>,
@@ -42,6 +44,7 @@ impl Default for Config {
             titles: false,
             apps: false,
             screen: false,
+            whatsapp: false,
             watch: ["WhatsApp", "ms-teams", "Teams", "OUTLOOK", "Telegram", "Discord", "Messenger", "Signal"]
                 .map(String::from)
                 .to_vec(),
@@ -134,17 +137,37 @@ pub fn start(app: AppHandle) {
         let mut last_screen = Instant::now();
         let mut last_titles = Instant::now();
         let mut watching_was = false;
+        let mut last_whatsapp = Instant::now();
         loop {
             std::thread::sleep(Duration::from_secs(5));
             let aw = app.state::<Awareness>();
             let cfg = aw.config();
             let paused = crate::integrations::PAUSED.load(Ordering::Relaxed);
-            let watching = !paused && (cfg.titles || cfg.apps || cfg.screen);
+            let watching = !paused && (cfg.titles || cfg.apps || cfg.screen || cfg.whatsapp);
             if watching != watching_was {
                 watching_was = watching;
                 let _ = app.emit("awareness", json!({ "watching": watching }));
             }
             if !watching || secrets::get("anthropic-api-key").is_none() {
+                continue;
+            }
+
+            // New WhatsApp messages, every 30 s.
+            if cfg.whatsapp && last_whatsapp.elapsed() >= Duration::from_secs(30) {
+                last_whatsapp = Instant::now();
+                let fresh: Vec<_> = app
+                    .state::<crate::whatsapp::WhatsApp>()
+                    .fresh()
+                    .into_iter()
+                    .filter(|m| !matches_any(&cfg.ignore, "WhatsApp", &m.chat))
+                    .collect();
+                if !fresh.is_empty() {
+                    let _ = app.emit("awareness", json!({ "watching": true, "looking": true }));
+                    analyze(&app, None, &format!("New WhatsApp messages:\n{}", crate::whatsapp::describe(&fresh)));
+                    continue;
+                }
+            }
+            if !(cfg.titles || cfg.apps || cfg.screen) {
                 continue;
             }
             let Some((exe, title)) = imp::foreground() else { continue };
