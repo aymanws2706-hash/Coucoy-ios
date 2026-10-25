@@ -24,6 +24,7 @@ mod sysstats;
 mod voice;
 mod whatsapp;
 mod elevation;
+mod dropcatch;
 mod tray;
 
 use std::process::Command;
@@ -714,6 +715,8 @@ pub fn run() {
             jobs::start(handle.clone());
             // Awareness: does nothing until switched on in Settings.
             awareness::start(handle.clone());
+            // Dropped files, the classic way, for when the webview refuses them.
+            dropcatch::start(&handle);
             // The phone link comes back on by itself once it has been paired.
             if phone::token().is_some() {
                 phone::start(handle.clone());

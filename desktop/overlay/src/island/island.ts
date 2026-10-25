@@ -600,6 +600,9 @@ export class Island {
 
   // ── File drop ───────────────────────────────────────────────────────────────
 
+  /** The same drop can arrive twice (webview and drop catcher). */
+  private lastDrop = { path: "", at: 0 };
+
   private onDragDrop(e: { type: string; paths?: string[] }) {
     if (e.type !== "over") void Bridge.log(`drag ${e.type} ${e.paths?.length ?? 0} file(s)`);
     if (State.paused) return;
@@ -627,6 +630,8 @@ export class Island {
       case "drop": {
         State.fileDragOver = false;
         const path = e.paths?.[0];
+        if (path && path === this.lastDrop.path && Date.now() - this.lastDrop.at < 3000) return;
+        if (path) this.lastDrop = { path, at: Date.now() };
         if (!path) {
           this.engine.animateMorph(0);
           this.setView(State.defaultView());
@@ -812,6 +817,16 @@ export class Island {
     });
 
     void onDragDrop((e) => this.onDragDrop(e));
+    // Personal build: the native drop catcher (see dropcatch.rs).
+    void onEvent<{ type: string; paths: string[] }>("drop-catcher", (e) => {
+      if (e.type === "drop" && !State.fileDragOver) {
+        // Dropped before the hover opened the zone: open it, then swallow.
+        this.onDragDrop({ type: "enter" });
+        window.setTimeout(() => this.onDragDrop(e), 250);
+        return;
+      }
+      this.onDragDrop(e);
+    });
 
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.
