@@ -50,6 +50,15 @@ jobs:
         run: |
           cp -rv mine/desktop/overlay/. coucou/windows/
           grep -q "mod sysstats" coucou/windows/src-tauri/src/lib.rs
+          # A new version for every build: Windows Installer only replaces the
+          # files of an installed app when the version goes up.
+          node -e '
+            const f = "coucou/windows/src-tauri/tauri.conf.json";
+            const c = JSON.parse(require("fs").readFileSync(f, "utf8"));
+            c.version = "0.2.${{ github.run_number }}";
+            require("fs").writeFileSync(f, JSON.stringify(c, null, 2));
+            console.log("version", c.version);
+          ' 
 
       - uses: actions/setup-node@v4
         with:
