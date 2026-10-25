@@ -140,6 +140,16 @@ export const Bridge = {
   lyrics: (artist: string, title: string, duration: number) =>
     call<[number, string][] | null>("lyrics", { artist, title, duration }),
   spotifyLike: () => callOrThrow<void>("spotify_like"),
+  translateText: (text: string, to: string) => callOrThrow<string>("translate_text", { text, to }),
+  translateFile: (path: string, to: string) => callOrThrow<string>("translate_file", { path, to }),
+  summarizeFile: (path: string) => callOrThrow<string>("summarize_file", { path }),
+  resizeImage: (path: string, max: number) => callOrThrow<string>("resize_image", { path, max }),
+  compressPdf: (path: string) => callOrThrow<string>("compress_pdf", { path }),
+  installGhostscript: () => callOrThrow<void>("install_ghostscript"),
+  mergePdfs: (paths: string[]) => callOrThrow<string>("merge_pdfs", { paths }),
+  ocrImage: (path: string) => callOrThrow<string>("ocr_image", { path }),
+  startSnip: () => call<void>("start_snip"),
+  copyText: (text: string) => callOrThrow<void>("copy_text", { text }),
   pickFile: () => call<string | null>("pick_file"),
   convertTargets: (path: string) => call<{ ext: string; label: string }[]>("convert_targets", { path }),
   /** The new file's path; rejects with "NEEDS_FFMPEG" for audio/video without ffmpeg. */

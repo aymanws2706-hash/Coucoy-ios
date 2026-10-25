@@ -160,6 +160,12 @@ class AppState {
   lyrics: { key: string; lines: [number, string][] } | null = null;
   /** Which briefing the brief view shows. */
   briefKind: "morning" | "evening" = "morning";
+  /** Every file of the last drop (Merge needs them all). */
+  droppedAll: string[] = [];
+  /** The Tools card is about a screenshot (Ctrl+Alt+S), not a dropped file. */
+  snipMode = false;
+  /** Ctrl+Alt+T: the selected text to translate. */
+  translateSource = "";
   /** Reminders still due today, for the briefing. */
   remindersToday: string[] = [];
   /** When nowPlaying was read, to move the progress bar between samples. */

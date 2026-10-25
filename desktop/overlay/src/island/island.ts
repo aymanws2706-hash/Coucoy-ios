@@ -190,7 +190,10 @@ export class Island {
       blip: () => Sound.play("blip"),
       pickFile: () => {
         void Bridge.pickFile().then((path) => {
-          if (path) this.swallow(path);
+          if (!path) return;
+          State.droppedAll = [path];
+          State.snipMode = false;
+          this.swallow(path);
         });
       },
     };
@@ -224,7 +227,10 @@ export class Island {
         this.setView("prompt");
       },
       cancel: () => this.setView(State.defaultView()),
-      convert: () => this.setView("convert"),
+      convert: () => {
+        State.snipMode = false;
+        this.setView("convert");
+      },
     });
 
     this.clipEl = h(
@@ -544,6 +550,26 @@ export class Island {
     // The settings window saved a city or a calendar link.
     void onEvent<null>("day-changed", () => void day(true));
 
+    // Ctrl+Alt+S: a screenshot was taken — offer what to do with it.
+    void onEvent<string>("snip", (path) => {
+      const name = path.split(/[\\/]/).pop() ?? "Screenshot.png";
+      State.snipMode = true;
+      State.droppedAll = [path];
+      State.droppedOriginal = path;
+      State.droppedFile = { name, path };
+      State.promptContext = { kind: "file", name, path };
+      State.chatHistory = [];
+      void Bridge.chatReset();
+      this.engine.gulp();
+      Sound.play("approve");
+      this.alert("convert");
+    });
+    // Ctrl+Alt+T: translate the selection.
+    void onEvent<string>("translate-selection", (text) => {
+      State.translateSource = text;
+      this.alert("translate");
+    });
+
     // Revit: in use for a long time since the project was last saved.
     void onEvent<{ project: string; minutes: number }>("revit-save", (p) => {
       this.alerted.delete("revit");
@@ -718,6 +744,10 @@ export class Island {
       case "drop": {
         State.fileDragOver = false;
         const path = e.paths?.[0];
+        if (e.paths?.length) {
+          State.droppedAll = e.paths;
+          State.snipMode = false;
+        }
         if (path && path === this.lastDrop.path && Date.now() - this.lastDrop.at < 3000) return;
         if (path) this.lastDrop = { path, at: Date.now() };
         if (!path) {

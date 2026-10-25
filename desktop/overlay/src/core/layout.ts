@@ -7,6 +7,7 @@ export type IslandMode = "hidden" | "compact" | "expanded";
 export type IslandViewName =
   | "today"
   | "brief"
+  | "translate"
   | "suggest"
   | "convert"
   | "pc"
@@ -75,7 +76,8 @@ export const WAKE_STRIP_H = 6;
 
 export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   brief: { height: 196, botX: 62, botY: null, botDiameter: 54, agentMode: "none" },
-  convert: { height: 176, botX: 62, botY: null, botDiameter: 52, agentMode: "none" },
+  convert: { height: 236, botX: 62, botY: null, botDiameter: 52, agentMode: "none" },
+  translate: { height: 210, botX: 62, botY: null, botDiameter: 50, agentMode: "none" },
   suggest: { height: 168, botX: 62, botY: null, botDiameter: 54, agentMode: "none" },
   today: { height: 188, botX: 62, botY: null, botDiameter: 54, agentMode: "none" },
   controls: { height: 200, botX: 62, botY: null, botDiameter: 50, agentMode: "none" },

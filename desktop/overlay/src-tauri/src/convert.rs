@@ -30,7 +30,7 @@ pub struct Target {
     pub label: String,
 }
 
-fn ext_of(path: &Path) -> String {
+pub(crate) fn ext_of(path: &Path) -> String {
     path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase()
 }
 
@@ -64,6 +64,11 @@ pub fn targets(path: &str) -> Vec<Target> {
 /// Downloads when the original's folder is read-only.
 fn output_path(src: &Path, to: &str) -> PathBuf {
     let stem = src.file_stem().and_then(|s| s.to_str()).unwrap_or("converted").to_string();
+    output_named(src, &stem, to)
+}
+
+/// Like output_path, with a chosen name: "plans (English)" → "plans (English).txt".
+pub(crate) fn output_named(src: &Path, stem: &str, to: &str) -> PathBuf {
     let mut dir = src.parent().map(Path::to_path_buf).unwrap_or_else(platform::home_dir);
     let probe = dir.join(".putshi-write-test");
     if std::fs::write(&probe, b"").is_err() {
@@ -112,7 +117,7 @@ pub fn convert(src: &str, to: &str) -> Result<String, String> {
 
 // ── Images ───────────────────────────────────────────────────────────────────
 
-fn load_image(src: &Path, from: &str) -> Result<image::DynamicImage, String> {
+pub(crate) fn load_image(src: &Path, from: &str) -> Result<image::DynamicImage, String> {
     if WIC_IN.contains(&from) {
         return wic::decode(src);
     }

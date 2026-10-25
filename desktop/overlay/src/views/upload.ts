@@ -103,7 +103,7 @@ export function buildChoose(actions: ViewActions): ViewHost {
     }),
     h("button", {
       class: "btn secondary",
-      text: "Convert…",
+      text: "Tools…",
       onclick: () => actions.setView("convert"),
     }),
     h("button", {

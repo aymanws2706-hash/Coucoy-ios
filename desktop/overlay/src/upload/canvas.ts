@@ -289,7 +289,7 @@ export class UploadCanvas {
     ctx.fillStyle = "rgba(255,255,255,0.16)";
     rr(ctx, 272, 113, 104, 26, 13);
     ctx.fill();
-    text(ctx, "Convert…", 324, 126, `500 12.5px ${FONT}`, "#F5F6F8", "center");
+    text(ctx, "Tools…", 324, 126, `500 12.5px ${FONT}`, "#F5F6F8", "center");
 
     ctx.fillStyle = "rgba(255,255,255,0.09)";
     rr(ctx, 384, 113, 84, 26, 13);

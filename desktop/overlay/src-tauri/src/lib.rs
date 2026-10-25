@@ -26,6 +26,7 @@ mod whatsapp;
 mod elevation;
 mod dropcatch;
 mod usage;
+mod tools;
 mod tray;
 
 use std::process::Command;
@@ -634,6 +635,59 @@ async fn spotify_like() -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(desk::spotify_like).await.map_err(|e| e.to_string())?
 }
 
+// ── Personal build: file tools, translate, screenshots ──────────────────────
+
+#[tauri::command]
+async fn translate_text(text: String, to: String) -> Result<String, String> {
+    tools::translate_text(&text, &to).await
+}
+
+#[tauri::command]
+async fn translate_file(path: String, to: String) -> Result<String, String> {
+    tools::translate_file(&path, &to).await
+}
+
+#[tauri::command]
+async fn summarize_file(path: String) -> Result<String, String> {
+    tools::summarize_file(&path).await
+}
+
+#[tauri::command]
+async fn resize_image(path: String, max: u32) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || tools::resize_image(&path, max)).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn compress_pdf(path: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || tools::compress_pdf(&path)).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn install_ghostscript() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(tools::install_ghostscript).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn merge_pdfs(paths: Vec<String>) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || tools::merge_pdfs(&paths)).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn ocr_image(path: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || tools::ocr(&path)).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn start_snip(app: AppHandle) {
+    tools::start_snip(&app);
+}
+
+#[tauri::command]
+fn copy_text(app: AppHandle, text: String) -> Result<(), String> {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    app.clipboard().write_text(text).map_err(|e| e.to_string())
+}
+
 /// Personal build: the Windows file dialog, for when dragging a file in isn't possible.
 #[tauri::command]
 async fn pick_file() -> Option<String> {
@@ -659,8 +713,23 @@ pub fn run() {
         // Personal build: Ctrl+Shift+Space opens the chat from anywhere.
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(|app, _shortcut, event| {
-                    if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                .with_handler(|app, shortcut, event| {
+                    use tauri_plugin_global_shortcut::{Code, Modifiers};
+                    if event.state() != tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        return;
+                    }
+                    let ctrl_alt = Modifiers::CONTROL | Modifiers::ALT;
+                    if shortcut.matches(ctrl_alt, Code::KeyS) {
+                        // Ctrl+Alt+S: Windows' snipping bar, then the snip card.
+                        tools::start_snip(app);
+                    } else if shortcut.matches(ctrl_alt, Code::KeyT) {
+                        // Ctrl+Alt+T: translate whatever is selected.
+                        let app = app.clone();
+                        std::thread::spawn(move || {
+                            let text = tools::copy_selection(&app).unwrap_or_default();
+                            let _ = app.emit("translate-selection", text);
+                        });
+                    } else {
                         let _ = app.emit("hotkey", "chat");
                     }
                 })
@@ -734,6 +803,16 @@ pub fn run() {
             set_glass,
             awareness_get,
             pick_file,
+            translate_text,
+            translate_file,
+            summarize_file,
+            resize_image,
+            compress_pdf,
+            install_ghostscript,
+            merge_pdfs,
+            ocr_image,
+            start_snip,
+            copy_text,
             usage_today,
             idle_secs,
             whatsapp_recent,
@@ -767,6 +846,12 @@ pub fn run() {
                 let chat_key = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Space);
                 if let Err(err) = handle.global_shortcut().register(chat_key) {
                     log::line(&format!("hotkey Ctrl+Shift+Space not available: {err}"));
+                }
+                for (code, name) in [(Code::KeyS, "Ctrl+Alt+S"), (Code::KeyT, "Ctrl+Alt+T")] {
+                    let key = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), code);
+                    if let Err(err) = handle.global_shortcut().register(key) {
+                        log::line(&format!("hotkey {name} not available: {err}"));
+                    }
                 }
             }
             // Before the island: see create_settings_window.
