@@ -726,7 +726,193 @@ button.ct-icon:hover {
   background: rgba(255, 255, 255, 0.18);
 }
 
-.cv-row .btn {
+.cv-row .btn,
+.cv-actions .btn {
   padding: 6px 13px;
   font-size: 12px;
+}
+
+/* The format picker: glass bubbles that burst out of the droplet. */
+.cv-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 16px 0 104px;
+}
+
+.cv-title {
+  font-size: 14px;
+}
+
+.cv-foot {
+  font-size: 11px;
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cv-stage {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 70px;
+}
+
+.cv-bubble {
+  --tint: #dee2e6;
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: default;
+  will-change: transform, opacity;
+}
+
+.cv-bubble-in {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 34%),
+    radial-gradient(circle at 50% 120%, color-mix(in srgb, var(--tint) 70%, transparent), transparent 70%),
+    color-mix(in srgb, var(--tint) 22%, rgba(255, 255, 255, 0.06));
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.45),
+    inset 0 -6px 12px color-mix(in srgb, var(--tint) 35%, transparent),
+    0 4px 14px color-mix(in srgb, var(--tint) 25%, transparent);
+  backdrop-filter: blur(6px) saturate(160%);
+  animation: cv-float 3.2s ease-in-out infinite;
+  transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 200ms;
+}
+
+.cv-bubble-in b {
+  font: 700 11px var(--font);
+  letter-spacing: 0.02em;
+}
+
+.cv-bubble-in small {
+  font: 500 8px var(--font);
+  opacity: 0.7;
+  max-width: 44px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cv-bubble:hover .cv-bubble-in {
+  transform: scale(1.14) translateY(-3px);
+  animation-play-state: paused;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.6),
+    inset 0 -6px 12px color-mix(in srgb, var(--tint) 50%, transparent),
+    0 0 18px color-mix(in srgb, var(--tint) 65%, transparent);
+}
+
+.cv-bubble:active .cv-bubble-in {
+  transform: scale(0.94);
+}
+
+@keyframes cv-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -3px; }
+}
+
+.cv-stage.working {
+  align-items: center;
+}
+
+.cv-progress {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  margin-top: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.cv-progress i {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, rgba(142, 182, 255, 0.95), transparent);
+  animation: cv-sweep 1.2s ease-in-out infinite;
+}
+
+@keyframes cv-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(250%); }
+}
+
+.cv-result {
+  --tint: #dee2e6;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  margin-top: 6px;
+  padding: 7px 14px 7px 8px;
+  border-radius: 999px;
+  font: 600 12px var(--font);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--tint) 22%, rgba(255, 255, 255, 0.08));
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.4),
+    0 0 18px color-mix(in srgb, var(--tint) 40%, transparent);
+}
+
+.cv-result span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cv-check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+  background: #40c057;
+  color: #fff;
+}
+
+.cv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  animation: cv-fade 320ms ease-out 380ms both;
+}
+
+.cv-actions.show {
+  animation-delay: 0ms;
+}
+
+@keyframes cv-fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cv-bubble,
+  .cv-result {
+    transition: none !important;
+  }
+  .cv-bubble-in,
+  .cv-actions,
+  .cv-progress i {
+    animation: none;
+  }
 }
