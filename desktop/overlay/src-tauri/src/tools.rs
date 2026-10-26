@@ -89,14 +89,24 @@ pub async fn translate_file(path: &str, to: &str) -> Result<String, String> {
     let src = Path::new(path);
     let stem = format!("{} ({to})", src.file_stem().and_then(|s| s.to_str()).unwrap_or("translated"));
     let txt = convert::output_named(src, &stem, "txt");
-    std::fs::write(&txt, text).map_err(|e| e.to_string())?;
-    // A Word file comes back as a Word file when Word (or LibreOffice) is there.
+    // With a BOM, Word reads it as UTF-8 (accents, Arabic) without asking.
+    std::fs::write(&txt, format!("\u{feff}{text}")).map_err(|e| e.to_string())?;
+    // The translation comes back in the original's format: a PDF stays a PDF,
+    // a Word file stays Word (through Word, or LibreOffice).
     let ext = convert::ext_of(src);
-    if ["doc", "docx", "odt", "rtf", "pdf"].contains(&ext.as_str()) {
+    let same = match ext.as_str() {
+        "pdf" => Some("pdf"),
+        "doc" | "docx" => Some("docx"),
+        "odt" => Some("odt"),
+        "rtf" => Some("rtf"),
+        _ => None,
+    };
+    if let Some(to) = same {
         let txt_s = txt.display().to_string();
-        if let Ok(docx) = tokio::task::spawn_blocking(move || convert::convert(&txt_s, "docx")).await.map_err(|e| e.to_string())? {
+        let to = to.to_string();
+        if let Ok(out) = tokio::task::spawn_blocking(move || convert::convert(&txt_s, &to)).await.map_err(|e| e.to_string())? {
             let _ = std::fs::remove_file(&txt);
-            return Ok(docx);
+            return Ok(out);
         }
     }
     Ok(txt.display().to_string())
