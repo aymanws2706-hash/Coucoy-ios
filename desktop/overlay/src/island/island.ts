@@ -1110,6 +1110,10 @@ export class Island {
     if (uploadActive) this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
     this.uploadCanvas.el.classList.toggle("on", uploadActive);
     this.viewsEl.classList.toggle("hidden-by-upload", uploadActive);
+    // Personal build: the content layer sits above the drop sequence's drawn
+    // buttons; only its header may take clicks while the sequence is up.
+    this.contentEl.classList.toggle("under-upload", uploadActive);
+    this.header.el.classList.toggle("over-upload", uploadActive);
 
     tickMiniBots(dt);
     this.views.get(State.view)?.tick?.(nowMs);

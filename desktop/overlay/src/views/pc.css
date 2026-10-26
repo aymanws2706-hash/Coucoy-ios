@@ -1111,3 +1111,19 @@ html.no-glass #island.np-glow {
 .cv-chip.on {
   background: rgba(142, 162, 255, 0.35);
 }
+
+/* While the drop sequence draws its own card, the views under it must not take
+   clicks: `.view.on` turns pointer events back on for itself, which made the
+   hidden view swallow the clicks meant for the drawn buttons. */
+#views.hidden-by-upload .view,
+#views.hidden-by-upload .view * {
+  pointer-events: none !important;
+}
+
+#content.under-upload {
+  pointer-events: none !important;
+}
+
+#content.under-upload .over-upload {
+  pointer-events: auto;
+}
