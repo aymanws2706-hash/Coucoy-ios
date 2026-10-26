@@ -166,6 +166,8 @@ class AppState {
   snipMode = false;
   /** Ctrl+Alt+T: the selected text to translate. */
   translateSource = "";
+  /** The Live panel's data (football, F1, markets). */
+  live: import("./bridge").LiveData | null = null;
   /** Reminders still due today, for the briefing. */
   remindersToday: string[] = [];
   /** When nowPlaying was read, to move the progress bar between samples. */

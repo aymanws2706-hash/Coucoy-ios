@@ -550,6 +550,27 @@ export class Island {
     // The settings window saved a city or a calendar link.
     void onEvent<null>("day-changed", () => void day(true));
 
+    // Live panel: football, F1, markets (read by live.rs).
+    const loadLive = async () => {
+      const d = await Bridge.liveGet();
+      if (d) State.live = d;
+      State.notify();
+    };
+    void loadLive();
+    void onEvent<null>("live-changed", () => void loadLive());
+    void onEvent<string>("live-alert", (text) => {
+      State.alertText = text;
+      this.engine.triggerEmote("surprised", 2.5);
+      Sound.play("approval");
+      this.fsm.forcePetit();
+      if (this.alertTimer != null) window.clearTimeout(this.alertTimer);
+      this.alertTimer = window.setTimeout(() => {
+        State.alertText = null;
+        State.notify();
+      }, 30_000);
+      State.notify();
+    });
+
     // Ctrl+Alt+S: a screenshot was taken — offer what to do with it.
     void onEvent<string>("snip", (path) => {
       const name = path.split(/[\\/]/).pop() ?? "Screenshot.png";
@@ -826,8 +847,10 @@ export class Island {
       this.engine.triggerEmote("happy");
     }
     // The extra second is the grow-back, after which the choose card is up.
+    // Personal build: straight to the Tools bubbles (Ask is one of them).
     if (since >= PRE_PROGRESS + dur + 1 && State.view === "uploading") {
-      this.setView("choose");
+      State.snipMode = false;
+      this.setView("convert");
     }
   }
 

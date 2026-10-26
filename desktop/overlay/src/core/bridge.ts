@@ -150,6 +150,7 @@ export const Bridge = {
   ocrImage: (path: string) => callOrThrow<string>("ocr_image", { path }),
   startSnip: () => call<void>("start_snip"),
   copyText: (text: string) => callOrThrow<void>("copy_text", { text }),
+  liveGet: () => call<LiveData>("live_get"),
   pickFile: () => call<string | null>("pick_file"),
   convertTargets: (path: string) => call<{ ext: string; label: string }[]>("convert_targets", { path }),
   /** The new file's path; rejects with "NEEDS_FFMPEG" for audio/video without ffmpeg. */
@@ -200,6 +201,41 @@ export interface NowPlaying {
   /** Personal build: album art colour "#rrggbb" and a small data: URL of it. */
   color?: string | null;
   art?: string | null;
+}
+
+export interface LiveMatch {
+  competition: string;
+  home: string;
+  away: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  state: "pre" | "in" | "post";
+  detail: string;
+  startMs: number;
+}
+
+export interface LiveQuote {
+  symbol: string;
+  name: string;
+  price: number;
+  changePct: number;
+}
+
+export interface LiveData {
+  teams: { name: string; live: LiveMatch | null; last: LiveMatch | null; next: LiveMatch | null }[];
+  f1: {
+    nextRace: string | null;
+    nextPlace: string | null;
+    nextMs: number | null;
+    lastRace: string | null;
+    lastPodium: string[];
+    standings: [string, number][];
+  } | null;
+  markets: LiveQuote[];
+  trending: LiveQuote[];
+  cryptoTrending: LiveQuote[];
+  errors: string[];
+  at: number;
 }
 
 export interface UsageDay {

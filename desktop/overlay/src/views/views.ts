@@ -18,6 +18,7 @@ import { buildClipboard, buildControls } from "./controls";
 import { buildConvert } from "./convert";
 import { buildBrief } from "./brief";
 import { buildTranslate } from "./translate";
+import { buildLive } from "./live";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -96,6 +97,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const tabHome = h("button", { class: "tab", title: "Overview", onclick: () => go("overview") }, svg(ICONS.house, 13));
   const tabChat = h("button", { class: "tab", title: "Ask", onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
   const tabDrop = h("button", { class: "tab", title: "Drop", onclick: () => go("upload") }, svg(ICONS.plus, 13));
+  const tabLive = h("button", { class: "tab", title: "Live: football, F1, markets", onclick: () => go("live") }, svg(ICONS.trophy, 14, { stroke: 1.7 }));
 
   const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
@@ -108,7 +110,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabToday, tabPc, tabControls, tabClip, tabHome, tabChat, tabDrop),
+    h("div", { class: "tabs" }, tabToday, tabLive, tabPc, tabControls, tabClip, tabHome, tabChat, tabDrop),
     h("div", { class: "header-actions" }, gearBtn, soundBtn),
   );
 
@@ -123,6 +125,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
+      tabLive.classList.toggle("on", v === "live");
       gearBtn.classList.toggle("on", v === "settings");
       clear(gearBtn);
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
@@ -572,6 +575,7 @@ export function buildViews(
   map.set("prompt", buildPrompt(onChatHeightChange));
   map.set("brief", buildBrief(actions));
   map.set("translate", buildTranslate(actions));
+  map.set("live", buildLive(actions));
   map.set("upload", buildUpload(actions));
   map.set("uploading", buildUploading());
   map.set("choose", buildChoose(actions));

@@ -210,6 +210,7 @@ export function buildConvert(actions: ViewActions): ViewHost {
       list.push({ key: "translate", label: "Translate", icon: "🌐" }, { key: "show", label: "Show", icon: "📁" });
       return list;
     }
+    list.push({ key: "ask", label: "Ask", icon: "💬" });
     if (pdfs().length >= 2) list.push({ key: "merge", label: `Merge ${pdfs().length}`, icon: "📎" });
     if (READABLE.includes(e) && !IMAGES.includes(e)) list.push({ key: "summary", label: "Summary", icon: "📝" });
     if (READABLE.includes(e)) list.push({ key: "translate", label: "Translate", icon: "🌐" });

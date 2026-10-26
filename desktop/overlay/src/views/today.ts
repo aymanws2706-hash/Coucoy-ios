@@ -214,6 +214,12 @@ export function notchLine(): string {
     parts.push(`⬇ ${short(dl.name, 20)} ${mb >= 1024 ? (mb / 1024).toFixed(1) + " GB" : Math.round(mb) + " MB"}`);
     return parts.join("  ·  ");
   }
+  // A Barça or Morocco match on right now.
+  const game = State.live?.teams.find((t) => t.live)?.live;
+  if (game) {
+    parts.push(`⚽ ${short(game.home, 12)} ${game.homeScore ?? 0}–${game.awayScore ?? 0} ${short(game.away, 12)} ${game.detail}`);
+    return parts.join("  ·  ");
+  }
   const live = liveEvent();
   if (live) {
     parts.push(`${when(live)}: ${live.title.length > 22 ? live.title.slice(0, 21) + "…" : live.title}`);

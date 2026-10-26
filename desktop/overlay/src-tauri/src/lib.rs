@@ -27,6 +27,7 @@ mod elevation;
 mod dropcatch;
 mod usage;
 mod tools;
+mod live;
 mod tray;
 
 use std::process::Command;
@@ -677,6 +678,12 @@ async fn ocr_image(path: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || tools::ocr(&path)).await.map_err(|e| e.to_string())?
 }
 
+/// Personal build: the Live panel (football, F1, markets) as last read.
+#[tauri::command]
+fn live_get(app: AppHandle) -> live::Live {
+    live::current(&app)
+}
+
 #[tauri::command]
 fn start_snip(app: AppHandle) {
     tools::start_snip(&app);
@@ -750,6 +757,7 @@ pub fn run() {
         .manage(awareness::Awareness::default())
         .manage(whatsapp::WhatsApp::default())
         .manage(usage::Usage::default())
+        .manage(live::LiveState::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             save_settings,
@@ -812,6 +820,7 @@ pub fn run() {
             merge_pdfs,
             ocr_image,
             start_snip,
+            live_get,
             copy_text,
             usage_today,
             idle_secs,
@@ -837,6 +846,7 @@ pub fn run() {
             // Dropped files, the classic way, for when the webview refuses them.
             dropcatch::start(&handle);
             usage::start(handle.clone());
+            live::start(handle.clone());
             // The phone link comes back on by itself once it has been paired.
             if phone::token().is_some() {
                 phone::start(handle.clone());
